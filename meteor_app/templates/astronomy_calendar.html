@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>天象日历</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载自定义过滤器和 humanize 模板标签库 -->
+    {% load custom_tags humanize %}
+    <h1>天象日历</h1>
+    <table>
+        <thead>
+            <tr>
+                <th>日</th>
+                <th>一</th>
+                <th>二</th>
+                <th>三</th>
+                <th>四</th>
+                <th>五</th>
+                <th>六</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% with today=selected_date|default:{% now "Y-m-d" %}|make_date %}
+                {% with year=today.year month=today.month %}
+                    {% with cal=today|get_calendar %}
+                        {% for week in cal %}
+                            <tr>
+                                {% for day in week %}
+                                    {% if day %}
+                                        <td>
+                                            <a href="?date={{ year }}-{{ month|stringformat:'02d' }}-{{ day|stringformat:'02d' }}">
+                                                {{ day }}
+                                            </a>
+                                            {% if selected_date and selected_date.day == day and selected_date.month == month and selected_date.year == year %}
+                                                <ul>
+                                                    {% for event in events %}
+                                                        <li>
+                                                            <h2>{{ event.summary }}</h2>
+                                                            <p>开始时间: {{ event.dtstart }}</p>
+                                                            <p>结束时间: {{ event.dtend }}</p>
+                                                            <p>描述: {{ event.description }}</p>
+                                                        </li>
+                                                    {% endfor %}
+                                                </ul>
+                                            {% endif %}
+                                        </td>
+                                    {% else %}
+                                        <td></td>
+                                    {% endif %}
+                                {% endfor %}
+                            </tr>
+                        {% endfor %}
+                    {% endwith %}
+                {% endwith %}
+            {% endwith %}
+        </tbody>
+    </table>
+</body>
+</html>
