@@ -35,7 +35,8 @@
             </tr>
         </thead>
         <tbody>
-            {% with today=selected_date|default:{% now "Y-m-d" %}|make_date %}
+            {% now "Y-m-d" as current_date %}
+            {% with today=selected_date|default:current_date|make_date %}
                 {% with year=today.year month=today.month %}
                     {% with cal=today|get_calendar %}
                         {% for week in cal %}
