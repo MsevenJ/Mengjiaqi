@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meteor Shower Prediction</title>
+    <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.7);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar.hidden {
+            transform: translateY(-100%);
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .navbar li {
+            margin: 0 1rem;
+        }
+
+        .navbar a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .navbar a:hover {
+            color: #63b3ed;
+        }
+
+        .navbar a.active {
+            background-color: white;
+            color: black;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding-top: 60px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        /* 新增和调整以下样式 */
+       .prediction-container {
+            background-color: rgba(255, 255, 255, 0.5); /* 半透明白色背景，可调整透明度 */
+            border-radius: 16px; /* 更大的圆角 */
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="navbar-container"></div>
+    <div class="main-content">
+        <!-- 流星雨预测功能框 -->
+        <div class="bg-white p-8 rounded-md shadow-md w-full max-w-md prediction-container">
+            <h1 class="text-2xl font-bold mb-4 text-center">Meteor Shower Prediction</h1>
+            <form method="post" id="predictionForm">
+                {% csrf_token %}
+                <div class="mb-4">
+                    <label for="city" class="block text-gray-700 text-sm font-bold mb-2">Enter your city:</label>
+                    <input type="text" id="city" name="city" required
+                           class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                </div>
+                <div class="flex justify-center">
+                    <button type="submit"
+                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                        Predict
+                    </button>
+                </div>
+            </form>
+            <div id="moonInfo" class="mt-4 text-center">
+                <!-- 月落月相信息将显示在这里 -->
+            </div>
+        </div>
+    </div>
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
+            <p id="errorMessage" class="text-red-500"></p>
+            <button id="closeModal"
+                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mt-4">
+                Close
+            </button>
+        </div>
+    </div>
+    <script>
+        const errorModal = document.getElementById('errorModal');
+        const errorMessage = document.getElementById('errorMessage');
+        const closeModal = document.getElementById('closeModal');
+        const moonInfo = document.getElementById('moonInfo');
+        const navbarContainer = document.getElementById('navbar-container');
+
+        // 加载菜单栏
+        fetch('{% url 'navbar' %}')
+          .then(response => response.text())
+          .then(data => {
+                navbarContainer.innerHTML = data;
+                const navbar = document.querySelector('.navbar');
+
+                // 导航栏升降动画
+                let prevScrollPos = window.pageYOffset;
+                window.onscroll = function () {
+                    const currentScrollPos = window.pageYOffset;
+                    if (prevScrollPos > currentScrollPos) {
+                        navbar.classList.remove('hidden');
+                    } else {
+                        navbar.classList.add('hidden');
+                    }
+                    prevScrollPos = currentScrollPos;
+                };
+
+                // 处理导航栏点击事件，突出显示当前选中项
+                const navLinks = document.querySelectorAll('.navbar a');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function (e) {
+                        // 移除阻止默认跳转行为的代码
+                        // e.preventDefault();
+
+                        // 处理导航栏点击事件，突出显示当前选中项
+                        navLinks.forEach(navLink => navLink.classList.remove('active'));
+                        this.classList.add('active');
+
+                        // 如果需要，可以添加额外的跳转逻辑
+                        // 例如，根据链接的 href 属性进行跳转
+                        const href = this.getAttribute('href');
+                        if (href) {
+                            window.location.href = href;
+                        }
+                    });
+                });
+            })
+           .catch(error => {
+                console.error('Error loading navbar:', error);
+            });
+
+        {% if error_message %}
+            errorMessage.textContent = '{{ error_message }}';
+            errorModal.style.display = 'flex';
+        {% endif %}
+
+        closeModal.addEventListener('click', () => {
+            errorModal.style.display = 'none';
+        });
+
+        window.addEventListener('click', (event) => {
+            if (event.target === errorModal) {
+                errorModal.style.display = 'none';
+            }
+        });
+
+        // 调用NASA APOD API获取每日一图
+        const apiKey = 'HgjR754sjfJaWcStYTzQM29r7lDhaCSEMjMOtDqj'; // 你可以替换为自己的API Key
+        const apiUrl = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`;
+
+        fetch(apiUrl)
+           .then(response => response.json())
+           .then(data => {
+                if (data.media_type === 'image') {
+                    document.body.style.backgroundImage = `url(${data.url})`;
+                } else {
+                    // 如果返回的不是图片，使用默认背景
+                    document.body.style.backgroundImage = 'url(https://picsum.photos/1920/1080?random=1)';
+                }
+            })
+           .catch(error => {
+                console.error('Error fetching NASA APOD:', error);
+                // 出错时使用默认背景
+                document.body.style.backgroundImage = 'url(https://picsum.photos/1920/1080?random=1)';
+            });
+    </script>
+</body>
+
+</html>
