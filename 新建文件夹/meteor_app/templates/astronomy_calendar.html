@@ -10,11 +10,22 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             margin: 0;
             background-color: #f4f4f4;
+        }
+
+        #left-side {
+            width: 50%;
+            height: 100vh;
+            /* 这里可以添加左侧内容的样式，暂时为空 */
+        }
+
+        #right-side {
+            width: 50%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #calendar {
@@ -25,10 +36,10 @@
             padding: 20px;
         }
 
-        .flatpickr-day.has-event {
-            background-color: #e0f7fa;
+       .flatpickr-day.has-astronomy-event {
+            background-color: #e0f7fa; /* 浅蓝色 */
             color: #00838f;
-            cursor: pointer;
+            border-radius: 50%; /* 圆形 */
         }
 
         #event-details {
@@ -45,7 +56,10 @@
 </head>
 
 <body>
-    <div id="calendar"></div>
+    <div id="left-side"></div>
+    <div id="right-side">
+        <div id="calendar"></div>
+    </div>
     <div id="event-details">
         <h2>当天天象信息</h2>
         <div id="event-content"></div>
@@ -62,6 +76,8 @@
 
         flatpickr(calendar, {
             defaultDate: new Date(),
+            mode: 'single',
+            inline: true,
             onReady: function (selectedDates, dateStr, instance) {
                 const currentMonth = selectedDates[0].getMonth();
                 const currentYear = selectedDates[0].getFullYear();
@@ -71,21 +87,32 @@
                 const endStr = endDate.toISOString().split('T')[0];
 
                 fetch(`/get-astronomy-events/?date_start=${startStr}&date_end=${endStr}`)
-                   .then(response => response.json())
+                   .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                    .then(data => {
+                        console.log('Received event data:', data);
                         const events = data.events;
+                        const dateElements = document.querySelectorAll('.flatpickr-day');
                         events.forEach(event => {
                             const eventStart = new Date(event.dtstart);
                             const eventEnd = new Date(event.dtend);
-                            let currentDate = eventStart;
+                            let currentDate = new Date(eventStart);
                             while (currentDate <= eventEnd) {
-                                const dateStr = currentDate.toISOString().split('T')[0];
-                                const dayElement = instance.getDayElement(currentDate);
-                                if (dayElement) {
-                                    dayElement.classList.add('has-event');
-                                    dayElement.dataset.summary = event.summary;
-                                    dayElement.dataset.description = event.description;
-                                }
+                                const dayOfMonth = currentDate.getDate();
+                                console.log('Current day of month:', dayOfMonth);
+                                dateElements.forEach(dayElement => {
+                                    const elementText = dayElement.textContent.trim();
+                                    if (parseInt(elementText) === dayOfMonth) {
+                                        dayElement.classList.add('has-astronomy-event');
+                                        console.log('Added class to element:', dayElement);
+                                        dayElement.dataset.summary = event.summary;
+                                        dayElement.dataset.description = event.description;
+                                    }
+                                });
                                 currentDate.setDate(currentDate.getDate() + 1);
                             }
                         });
@@ -96,15 +123,21 @@
             },
             onChange: function (selectedDates, dateStr, instance) {
                 const selectedDate = new Date(dateStr);
-                const dayElement = instance.getDayElement(selectedDate);
-                if (dayElement && dayElement.classList.contains('has-event')) {
-                    const summary = dayElement.dataset.summary;
-                    const description = dayElement.dataset.description;
-                    eventContent.innerHTML = `<p><strong>${summary}</strong><br>${description}</p>`;
-                    eventDetails.style.display = 'block';
-                } else {
-                    eventDetails.style.display = 'none';
-                }
+                const dayOfMonth = selectedDate.getDate();
+                const dateElements = document.querySelectorAll('.flatpickr-day');
+                dateElements.forEach(dayElement => {
+                    const elementText = dayElement.textContent.trim();
+                    if (parseInt(elementText) === dayOfMonth) {
+                        if (dayElement.classList.contains('has-astronomy-event')) {
+                            const summary = dayElement.dataset.summary;
+                            const description = dayElement.dataset.description;
+                            eventContent.innerHTML = `<p><strong>${summary}</strong><br>${description}</p>`;
+                            eventDetails.style.display = 'block';
+                        } else {
+                            eventDetails.style.display = 'none';
+                        }
+                    }
+                });
             }
         });
 
