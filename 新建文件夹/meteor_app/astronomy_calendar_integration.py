@@ -70,7 +70,7 @@ def addEvent(calendar, summary, description, date_list):
 
 def generateAstronomyCalendar():
     cal = initCalendar()
-    for year in range(2015, 2031):
+    for year in range(2015, 2030):
         cal = parseCalendar(cal, year)
     return cal
 

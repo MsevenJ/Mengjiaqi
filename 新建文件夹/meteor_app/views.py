@@ -1,12 +1,10 @@
-from django.http import JsonResponse
+import logging
+from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
-from .astronomy_calendar_integration import generateAstronomyCalendar
-from.models import City, Constellation, MeteorShower, MoonPhase
+from .models import AstronomyEvent
 from datetime import date
-from django.http import HttpResponse
-from .astronomy_calendar_integration import import_ics_to_db
 
-
+logger = logging.getLogger(__name__)
 
 def meteor_shower_prediction(request):
     if request.method == 'POST':
@@ -25,88 +23,35 @@ def meteor_shower_prediction(request):
     return render(request, 'prediction_form.html')
 
 def astronomy_calendar(request):
-    selected_date_str = request.GET.get('date')
-    if selected_date_str:
-        try:
-            selected_date = date.fromisoformat(selected_date_str)
-            cal = generateAstronomyCalendar()
-            events = []
-            for component in cal.walk():
-                if component.name == 'VEVENT':
-                    event_start = component.get('dtstart').dt
-                    event_end = component.get('dtend').dt
-                    if isinstance(event_start, date) and isinstance(event_end, date):
-                        if event_start <= selected_date <= event_end:
-                            event = {
-                                'summary': component.get('summary'),
-                                'description': component.get('description'),
-                                'dtstart': event_start,
-                                'dtend': event_end
-                            }
-                            events.append(event)
-            return render(request, 'astronomy_calendar.html', {'events': events, 'selected_date': selected_date})
-        except ValueError:
-            pass
-    return render(request, 'astronomy_calendar.html', {'events': [], 'selected_date': None})
+    return render(request, 'astronomy_calendar.html')
 
 def navbar(request):
     return render(request, 'navbar.html')
 
-
-
 def get_astronomy_events(request):
-    date_str = request.GET.get('date')
-    if date_str:
+    date_start_str = request.GET.get('date_start')
+    date_end_str = request.GET.get('date_end')
+    if date_start_str and date_end_str:
         try:
-            selected_date = date.fromisoformat(date_str)
-            cal = generateAstronomyCalendar()
-            events = []
-            for component in cal.walk():
-                if component.name == 'VEVENT':
-                    event_start = component.get('dtstart').dt
-                    event_end = component.get('dtend').dt
-                    if isinstance(event_start, date) and isinstance(event_end, date):
-                        if event_start <= selected_date <= event_end:
-                            event = {
-                                'summary': component.get('summary'),
-                                'description': component.get('description'),
-                                'dtstart': event_start,
-                                'dtend': event_end
-                            }
-                            events.append(event)
-            return JsonResponse({'events': events})
+            events = AstronomyEvent.objects.filter(start_date__lte=date_end_str, end_date__gte=date_start_str)
+            event_list = []
+            for event in events:
+                event_dict = {
+                    'summary': str(event.summary),
+                    'description': str(event.description),
+                    'dtstart': event.start_date.strftime('%Y-%m-%d'),
+                    'dtend': event.end_date.strftime('%Y-%m-%d')
+                }
+                event_list.append(event_dict)
+            logger.info(f"Fetched {len(event_list)} events for date range {date_start_str} - {date_end_str}")
+            return JsonResponse({'events': event_list})
         except Exception as e:
+            logger.error(f"Error fetching events: {e}")
             return JsonResponse({'error': str(e)}, status=500)
-    return JsonResponse({'error': 'No date provided'}, status=400)
-
-
-
-def get_astronomy_events_by_year(request):
-    year_str = request.GET.get('year')
-    if year_str:
-        try:
-            year = int(year_str)
-            cal = generateAstronomyCalendar()
-            events = []
-            for component in cal.walk():
-                if component.name == 'VEVENT':
-                    event_start = component.get('dtstart').dt
-                    event_end = component.get('dtend').dt
-                    if isinstance(event_start, date) and isinstance(event_end, date):
-                        if event_start.year == year:
-                            event = {
-                                'summary': component.get('summary'),
-                                'description': component.get('description'),
-                                'dtstart': event_start,
-                                'dtend': event_end
-                            }
-                            events.append(event)
-            return JsonResponse({'events': events})
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
-    return JsonResponse({'error': 'No year provided'}, status=400)
-
+    logger.error("No date range provided")
+    return JsonResponse({'error': 'No date range provided'}, status=400)
 
 def import_ics_data(request):
+    from .astronomy_calendar_integration import import_ics_to_db
     import_ics_to_db()
     return HttpResponse("ICS data imported successfully.")

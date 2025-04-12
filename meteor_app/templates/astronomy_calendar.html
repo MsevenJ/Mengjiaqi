@@ -7,62 +7,142 @@
     <!-- 引入 flatpickr 的 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
-        table {
-            border-collapse: collapse;
-            width: 100%;
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            margin: 0;
+            background-color: #f4f4f4;
         }
 
-        th,
-        td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
+        #left-side {
+            width: 50%;
+            height: 100vh;
+            /* 这里可以添加左侧内容的样式，暂时为空 */
         }
 
-        th {
-            background-color: #f2f2f2;
+        #right-side {
+            width: 50%;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #calendar {
+            width: 300px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+       .flatpickr-day.has-astronomy-event {
+            background-color: #e0f7fa; /* 浅蓝色 */
+            color: #00838f;
+            border-radius: 50%; /* 圆形 */
+        }
+
+        #event-details {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: none;
         }
     </style>
 </head>
 
 <body>
-    <!-- 加载自定义过滤器和 humanize 模板标签库 -->
-    {% load custom_tags humanize %}
-    <!-- 年份选择器 -->
-    <input type="number" id="year-selector" min="2015" max="2030" placeholder="选择年份">
-    <button id="load-year">加载该年份数据</button>
-    <h1>天象日历</h1>
-    <div id="calendar-container">
-        <!-- 日历内容将动态显示在这里 -->
+    <div id="left-side"></div>
+    <div id="right-side">
+        <div id="calendar"></div>
+    </div>
+    <div id="event-details">
+        <h2>当天天象信息</h2>
+        <div id="event-content"></div>
+        <button id="close-details">关闭</button>
     </div>
 
     <!-- 引入 flatpickr 的 JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
-        document.getElementById('load-year').addEventListener('click', function () {
-            const year = document.getElementById('year-selector').value;
-            if (year) {
-                fetch(`/get-astronomy-events-by-year/?year=${year}`)
-                   .then(response => response.json())
+        const calendar = document.getElementById('calendar');
+        const eventDetails = document.getElementById('event-details');
+        const eventContent = document.getElementById('event-content');
+        const closeDetails = document.getElementById('close-details');
+
+        flatpickr(calendar, {
+            defaultDate: new Date(),
+            mode: 'single',
+            inline: true,
+            onReady: function (selectedDates, dateStr, instance) {
+                const currentMonth = selectedDates[0].getMonth();
+                const currentYear = selectedDates[0].getFullYear();
+                const startDate = new Date(currentYear, currentMonth, 1);
+                const endDate = new Date(currentYear, currentMonth + 1, 0);
+                const startStr = startDate.toISOString().split('T')[0];
+                const endStr = endDate.toISOString().split('T')[0];
+
+                fetch(`/get-astronomy-events/?date_start=${startStr}&date_end=${endStr}`)
+                   .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
                    .then(data => {
-                        const calendarContainer = document.getElementById('calendar-container');
-                        let calendarHtml = '<table>';
-                        calendarHtml += '<thead><tr><th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th></tr></thead>';
-                        calendarHtml += '<tbody>';
-
-                        // 这里需要根据返回的数据生成日历表格，示例中简单展示数据
-                        data.events.forEach(event => {
-                            calendarHtml += `<tr><td colspan="7">${event.summary} - ${event.dtstart} 到 ${event.dtend}</td></tr>`;
+                        console.log('Received event data:', data);
+                        const events = data.events;
+                        const dateElements = document.querySelectorAll('.flatpickr-day');
+                        events.forEach(event => {
+                            const eventStart = new Date(event.dtstart);
+                            const eventEnd = new Date(event.dtend);
+                            let currentDate = new Date(eventStart);
+                            while (currentDate <= eventEnd) {
+                                const dayOfMonth = currentDate.getDate();
+                                console.log('Current day of month:', dayOfMonth);
+                                dateElements.forEach(dayElement => {
+                                    const elementText = dayElement.textContent.trim();
+                                    if (parseInt(elementText) === dayOfMonth) {
+                                        dayElement.classList.add('has-astronomy-event');
+                                        console.log('Added class to element:', dayElement);
+                                        dayElement.dataset.summary = event.summary;
+                                        dayElement.dataset.description = event.description;
+                                    }
+                                });
+                                currentDate.setDate(currentDate.getDate() + 1);
+                            }
                         });
-
-                        calendarHtml += '</tbody></table>';
-                        calendarContainer.innerHTML = calendarHtml;
                     })
                    .catch(error => {
-                        const calendarContainer = document.getElementById('calendar-container');
-                        calendarContainer.innerHTML = `<p>错误: ${error.message}</p>`;
+                        console.error('Error fetching events:', error);
                     });
+            },
+            onChange: function (selectedDates, dateStr, instance) {
+                const selectedDate = new Date(dateStr);
+                const dayOfMonth = selectedDate.getDate();
+                const dateElements = document.querySelectorAll('.flatpickr-day');
+                dateElements.forEach(dayElement => {
+                    const elementText = dayElement.textContent.trim();
+                    if (parseInt(elementText) === dayOfMonth) {
+                        if (dayElement.classList.contains('has-astronomy-event')) {
+                            const summary = dayElement.dataset.summary;
+                            const description = dayElement.dataset.description;
+                            eventContent.innerHTML = `<p><strong>${summary}</strong><br>${description}</p>`;
+                            eventDetails.style.display = 'block';
+                        } else {
+                            eventDetails.style.display = 'none';
+                        }
+                    }
+                });
             }
+        });
+
+        closeDetails.addEventListener('click', function () {
+            eventDetails.style.display = 'none';
         });
     </script>
 </body>

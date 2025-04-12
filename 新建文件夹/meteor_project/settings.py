@@ -77,9 +77,9 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',  # 数据库引擎
         'NAME': 'astronomy_events',             # 数据库名称（与你 Navicat 中创建的数据库名一致）
         'USER': 'root',           # MySQL 用户名
-        'PASSWORD': '123456',         #  MySQL 密码
+        'PASSWORD': 'root',         #  MySQL 密码
         'HOST': 'localhost',                    # 数据库主机（本地连接一般为 localhost）
-        'PORT': '3306',                         # 数据库端口（MySQL 默认端口）
+        'PORT': '3307',                         # 数据库端口（MySQL 默认端口）
     }
 }
 
