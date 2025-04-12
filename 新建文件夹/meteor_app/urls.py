@@ -11,4 +11,6 @@ urlpatterns = [
 
     path('get-astronomy-events-by-year/', views.get_astronomy_events_by_year, name='get_astronomy_events_by_year'),
 
+    path('import-ics-data/', views.import_ics_data, name='import_ics_data'),
+
 ]

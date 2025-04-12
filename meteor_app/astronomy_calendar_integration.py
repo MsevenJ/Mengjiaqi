@@ -5,6 +5,7 @@ import requests
 import calendar
 import pytz
 import re
+from .models import AstronomyEvent
 
 
 def initCalendar():
@@ -69,6 +70,26 @@ def addEvent(calendar, summary, description, date_list):
 
 def generateAstronomyCalendar():
     cal = initCalendar()
-    for year in range(2015, 2031):
+    for year in range(2015, 2030):
         cal = parseCalendar(cal, year)
     return cal
+
+
+
+def import_ics_to_db():
+    cal = generateAstronomyCalendar()
+    for component in cal.walk():
+        if component.name == 'VEVENT':
+            event_start = component.get('dtstart').dt
+            event_end = component.get('dtend').dt
+            if isinstance(event_start, date) and isinstance(event_end, date):
+                summary = component.get('summary')
+                description = component.get('description')
+                AstronomyEvent.objects.get_or_create(
+                    summary=summary,
+                    description=description,
+                    start_date=event_start,
+                    end_date=event_end
+                )
+
+

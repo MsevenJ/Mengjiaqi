@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'meteor_app',  # 你的自定义应用
+    'meteor_app',
     'django.contrib.humanize',
 ]
 
@@ -53,12 +53,10 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'meteor_project.urls'
 
-# meteor_project/settings.py
-
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  # 确保这里指向正确的模板目录
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -74,13 +72,14 @@ TEMPLATES = [
 WSGI_APPLICATION = 'meteor_project.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',  # 数据库引擎
+        'NAME': 'astronomy_events',             # 数据库名称（与你 Navicat 中创建的数据库名一致）
+        'USER': 'root',           # MySQL 用户名
+        'PASSWORD': 'root',         #  MySQL 密码
+        'HOST': 'localhost',                    # 数据库主机（本地连接一般为 localhost）
+        'PORT': '3307',                         # 数据库端口（MySQL 默认端口）
     }
 }
 

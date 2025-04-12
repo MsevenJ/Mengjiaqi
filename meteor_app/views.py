@@ -3,6 +3,9 @@ from django.shortcuts import render
 from .astronomy_calendar_integration import generateAstronomyCalendar
 from.models import City, Constellation, MeteorShower, MoonPhase
 from datetime import date
+from django.http import HttpResponse
+from .astronomy_calendar_integration import import_ics_to_db
+
 
 
 def meteor_shower_prediction(request):
@@ -102,3 +105,8 @@ def get_astronomy_events_by_year(request):
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
     return JsonResponse({'error': 'No year provided'}, status=400)
+
+
+def import_ics_data(request):
+    import_ics_to_db()
+    return HttpResponse("ICS data imported successfully.")

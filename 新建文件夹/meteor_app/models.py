@@ -35,6 +35,13 @@ class MeteorShower(models.Model):
     def __str__(self):
         return self.name
 
+class AstronomyEvent(models.Model):
+    summary = models.CharField(max_length=255)
+    description = models.TextField()
+    start_date = models.DateField()
+    end_date = models.DateField()
 
+    def __str__(self):
+        return self.summary
 
 # Create your models here.
