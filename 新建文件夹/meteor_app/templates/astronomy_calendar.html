@@ -4,128 +4,158 @@
 <head>
     <meta charset="UTF-8">
     <title>天象日历</title>
-    <!-- 引入 flatpickr 的 CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            justify-content: flex-end;
-            align-items: center;
+            min-height: 100vh;
             margin: 0;
-            background-color: #f4f4f4;
-            height: 100vh;
-            padding: 20px;
+            background-color: #f4f4f9;
         }
 
-        #calendar-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            width: 300px;
+        /* 导航栏样式 */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.7);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
             transition: transform 0.3s ease;
-            position: relative;
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .navbar li {
+            margin: 0 1rem;
+        }
+
+        .navbar a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .navbar a:hover {
+            color: #63b3ed;
+        }
+
+        .navbar a.active {
+            background-color: white;
+            color: black;
+        }
+
+        /* 日历容器样式 */
+        #calendar-container {
+            width: 300px;
+            background-color: rgba(0, 0, 0, 0.5); /* 半透明黑色背景 */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-left: auto;
+            margin-right: 1em; /* 距离右侧边缘一指宽 */
+            margin-top: 60px; /* 留出导航栏的空间 */
         }
 
         #calendar {
             width: 100%;
-            background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            box-sizing: border-box;
-            z-index: 2;
-        }
-
-       .flatpickr-day.has-astronomy-event {
-            background-color: #e0f7fa;
-            color: #00838f;
-            border-radius: 50%;
         }
 
         #event-details {
-            width: 100%;
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
             background-color: white;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            box-sizing: border-box;
-            position: absolute;
-            top: calc(100% + 20px);
-            left: 0;
             opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s ease, visibility 0.3s ease;
-            z-index: 1;
+            transition: opacity 0.3s ease; /* 平滑显示动画 */
         }
 
         #event-details.show {
             opacity: 1;
-            visibility: visible;
         }
 
-        #close-details {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 16px;
-        }
-
-        #event-content {
-            margin-top: 20px;
-        }
-
-        .pagination {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 10px;
-        }
-
-        .pagination button {
-            background: none;
-            border: none;
-            cursor: pointer;
+       .flatpickr-day.has-event {
+            background-color: #e0f7fa;
+            color: #00838f;
+            border-radius: 50%;
         }
     </style>
 </head>
 
 <body>
+    <div id="navbar-container"></div>
     <div id="calendar-container">
         <div id="calendar"></div>
         <div id="event-details">
-            <button id="close-details">收起</button>
             <h2>当天天象信息</h2>
             <div id="event-content"></div>
-            <div class="pagination">
-                <button id="prev-event">上一个</button>
-                <button id="next-event">下一个</button>
-            </div>
         </div>
     </div>
 
-    <!-- 引入 flatpickr 的 JavaScript -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
         const calendar = document.getElementById('calendar');
-        const eventDetails = document.getElementById('event-details');
         const eventContent = document.getElementById('event-content');
-        const closeDetails = document.getElementById('close-details');
-        const calendarContainer = document.getElementById('calendar-container');
+        const eventDetails = document.getElementById('event-details');
         let eventData = {};
-        let currentEventIndex = 0;
-        let eventsList = [];
+
+        // 加载菜单栏
+        fetch('{% url 'navbar' %}')
+          .then(response => response.text())
+          .then(data => {
+                const navbarContainer = document.getElementById('navbar-container');
+                navbarContainer.innerHTML = data;
+                const navbar = document.querySelector('.navbar');
+
+                // 导航栏升降动画
+                let prevScrollPos = window.pageYOffset;
+                window.onscroll = function () {
+                    const currentScrollPos = window.pageYOffset;
+                    if (prevScrollPos > currentScrollPos) {
+                        navbar.classList.remove('hidden');
+                    } else {
+                        navbar.classList.add('hidden');
+                    }
+                    prevScrollPos = currentScrollPos;
+                };
+
+                // 处理导航栏点击事件，突出显示当前选中项
+                const navLinks = document.querySelectorAll('.navbar a');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function (e) {
+                        navLinks.forEach(navLink => navLink.classList.remove('active'));
+                        this.classList.add('active');
+                        const href = this.getAttribute('href');
+                        if (href) {
+                            window.location.href = href;
+                        }
+                    });
+                });
+            })
+           .catch(error => {
+                console.error('Error loading navbar:', error);
+            });
 
         flatpickr(calendar, {
             defaultDate: new Date(),
             mode: 'single',
             inline: true,
             onMonthChange: function (selectedDates, dateStr, instance) {
-                const currentDate = selectedDates[0];
-                const year = currentDate.getFullYear();
-                const month = currentDate.getMonth();
+                console.log('onMonthChange event triggered');
+                const year = instance.currentYear;
+                const month = instance.currentMonth;
 
                 const startDate = new Date(year, month, 1);
                 const endDate = new Date(year, month + 1, 0);
@@ -133,7 +163,15 @@
                 const startStr = startDate.toISOString().split('T')[0];
                 const endStr = endDate.toISOString().split('T')[0];
 
-                console.log('请求的日期范围: 开始日期', startStr, '结束日期', endStr);
+                console.log('Requesting data for date range:', startStr, ' - ', endStr);
+
+                // 清除旧的事件数据和样式
+                const dateElements = document.querySelectorAll('.flatpickr-day');
+                dateElements.forEach(dayElement => {
+                    dayElement.classList.remove('has-event');
+                });
+                eventContent.innerHTML = '';
+                eventData = {};
 
                 fetch(`/get-astronomy-events/?date_start=${startStr}&date_end=${endStr}`)
                    .then(response => {
@@ -143,16 +181,9 @@
                         return response.json();
                     })
                    .then(data => {
-                        console.log('成功获取事件数据:', data);
+                        console.log('Received data:', data);
                         const events = data.events;
-                        const dateElements = document.querySelectorAll('.flatpickr-day');
-                        // 先移除所有之前添加的活动样式
-                        dateElements.forEach(dayElement => {
-                            dayElement.classList.remove('has-astronomy-event');
-                        });
-                        eventContent.innerHTML = ''; // 清空之前的事件内容
-                        eventsList = [];
-                        eventData = {}; // 清空之前的事件数据
+
                         events.forEach(event => {
                             const eventStart = new Date(event.dtstart);
                             const eventEnd = new Date(event.dtend);
@@ -165,41 +196,24 @@
                                 dateElements.forEach(dayElement => {
                                     const elementText = dayElement.textContent.trim();
                                     if (parseInt(elementText) === dayOfMonth) {
-                                        console.log('为日期', dateKey, '添加事件样式');
-                                        dayElement.classList.add('has-astronomy-event');
+                                        dayElement.classList.add('has-event');
                                         eventData[dateKey] = {
                                             summary: event.summary,
                                             description: event.description
                                         };
-                                        eventsList.push({
-                                            date: dateKey,
-                                            summary: event.summary,
-                                            description: event.description
-                                        });
                                     }
                                 });
                                 currentDate.setDate(currentDate.getDate() + 1);
                             }
                         });
-                        currentEventIndex = 0;
-                        showEvent(currentEventIndex);
-                        // 显示详情框
-                        eventDetails.style.opacity = 1;
-                        eventDetails.style.visibility = 'visible';
-                        eventDetails.classList.add('show');
-                        // 向上滑动日历，调整上滑距离
-                        calendarContainer.style.transform = 'translateY(-50%)';
+                        console.log('Data processed successfully.');
                     })
                    .catch(error => {
                         console.error('Error fetching events:', error);
-                        // 隐藏详情框并恢复日历位置
-                        eventDetails.style.opacity = 0;
-                        eventDetails.style.visibility = 'hidden';
-                        eventDetails.classList.remove('show');
-                        calendarContainer.style.transform = 'translateY(0)';
                     });
             },
             onChange: function (selectedDates, dateStr, instance) {
+                console.log('onChange event triggered');
                 const selectedDate = new Date(dateStr);
                 const year = selectedDate.getFullYear();
                 const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
@@ -209,65 +223,11 @@
                 if (eventData[dateKey]) {
                     const event = eventData[dateKey];
                     eventContent.innerHTML = `<p><strong>${dateKey}</strong>: ${event.summary}<br>${event.description}</p>`;
-                    eventDetails.style.opacity = 1;
-                    eventDetails.style.visibility = 'visible';
-                    eventDetails.classList.add('show');
-                    calendarContainer.style.transform = 'translateY(-50%)';
-                    // 找到该事件在 eventsList 中的索引
-                    currentEventIndex = eventsList.findIndex(e => e.date === dateKey);
-                    // 禁用或启用翻页按钮
-                    document.getElementById('prev-event').disabled = currentEventIndex === 0;
-                    document.getElementById('next-event').disabled = currentEventIndex === eventsList.length - 1;
                 } else {
-                    eventContent.innerHTML = '该日期暂无事件信息';
-                    eventDetails.style.opacity = 1;
-                    eventDetails.style.visibility = 'visible';
-                    eventDetails.classList.add('show');
-                    calendarContainer.style.transform = 'translateY(-50%)';
-                    document.getElementById('prev-event').disabled = true;
-                    document.getElementById('next-event').disabled = true;
+                    eventContent.innerHTML = '<p>该日期暂无事件信息</p>';
                 }
-
-                // 确保所有有事件的日期保持标蓝
-                const allEventDates = document.querySelectorAll('.flatpickr-day.has-astronomy-event');
-                allEventDates.forEach(date => {
-                    date.classList.add('has-astronomy-event');
-                });
+                eventDetails.classList.add('show');
             }
-        });
-
-        function showEvent(index) {
-            if (eventsList.length > 0) {
-                const event = eventsList[index];
-                eventContent.innerHTML = `<p><strong>${event.date}</strong>: ${event.summary}<br>${event.description}</p>`;
-            } else {
-                eventContent.innerHTML = '暂无事件信息';
-            }
-            // 禁用或启用翻页按钮
-            document.getElementById('prev-event').disabled = index === 0;
-            document.getElementById('next-event').disabled = index === eventsList.length - 1;
-        }
-
-        document.getElementById('prev-event').addEventListener('click', function () {
-            if (currentEventIndex > 0) {
-                currentEventIndex--;
-                showEvent(currentEventIndex);
-            }
-        });
-
-        document.getElementById('next-event').addEventListener('click', function () {
-            if (currentEventIndex < eventsList.length - 1) {
-                currentEventIndex++;
-                showEvent(currentEventIndex);
-            }
-        });
-
-        closeDetails.addEventListener('click', function () {
-            // 隐藏详情框并恢复日历位置
-            eventDetails.style.opacity = 0;
-            eventDetails.style.visibility = 'hidden';
-            eventDetails.classList.remove('show');
-            calendarContainer.style.transform = 'translateY(0)';
         });
     </script>
 </body>

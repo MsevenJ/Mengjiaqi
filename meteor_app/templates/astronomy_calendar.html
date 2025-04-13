@@ -9,19 +9,78 @@
         body {
             font-family: Arial, sans-serif;
             display: flex;
-            justify-content: center;
-            align-items: center;
             min-height: 100vh;
             margin: 0;
-            background-color: #f4f4f9;
+            background-color: #000;
+            align-items: center;
         }
 
+        .image-wrapper {
+            width: 584px; /* 730 * 0.8 */
+            height: 584px; /* 730 * 0.8 */
+            margin-left: 1em; /* 距离左边边界一指宽 */
+            display: flex;
+            align-items: center;
+        }
+
+        .image-wrapper img {
+            width: 584px; /* 730 * 0.8 */
+            height: 584px; /* 730 * 0.8 */
+            object-fit: contain;
+        }
+
+        /* 导航栏样式 */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.7);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .navbar li {
+            margin: 0 1rem;
+        }
+
+        .navbar a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .navbar a:hover {
+            color: #63b3ed;
+        }
+
+        .navbar a.active {
+            background-color: white;
+            color: black;
+        }
+
+        /* 日历容器样式 */
         #calendar-container {
             width: 300px;
-            background-color: white;
+            background-color: rgba(0, 0, 0, 0.5);
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
+            margin-left: auto;
+            margin-right: 1em;
+            margin-top: 60px;
         }
 
         #calendar {
@@ -33,6 +92,20 @@
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
+            background-color: white;
+            opacity: 0;
+            -webkit-transition: opacity 0.5s ease;
+            -moz-transition: opacity 0.5s ease;
+            -o-transition: opacity 0.5s ease;
+            transition: opacity 0.5s ease; /* 平滑显示动画 */
+        }
+
+        #event-details.show {
+            opacity: 1;
+        }
+
+        #event-details.show {
+            opacity: 1;
         }
 
        .flatpickr-day.has-event {
@@ -44,6 +117,10 @@
 </head>
 
 <body>
+    <div class="image-wrapper">
+        <img src="{{ moon_phase_image }}" alt="Moon Phase">
+    </div>
+    <div id="navbar-container"></div>
     <div id="calendar-container">
         <div id="calendar"></div>
         <div id="event-details">
@@ -56,7 +133,45 @@
     <script>
         const calendar = document.getElementById('calendar');
         const eventContent = document.getElementById('event-content');
+        const eventDetails = document.getElementById('event-details');
         let eventData = {};
+
+        // 加载菜单栏
+        fetch('{% url 'navbar' %}')
+          .then(response => response.text())
+          .then(data => {
+                const navbarContainer = document.getElementById('navbar-container');
+                navbarContainer.innerHTML = data;
+                const navbar = document.querySelector('.navbar');
+
+                // 导航栏升降动画
+                let prevScrollPos = window.pageYOffset;
+                window.onscroll = function () {
+                    const currentScrollPos = window.pageYOffset;
+                    if (prevScrollPos > currentScrollPos) {
+                        navbar.classList.remove('hidden');
+                    } else {
+                        navbar.classList.add('hidden');
+                    }
+                    prevScrollPos = currentScrollPos;
+                };
+
+                // 处理导航栏点击事件，突出显示当前选中项
+                const navLinks = document.querySelectorAll('.navbar a');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function (e) {
+                        navLinks.forEach(navLink => navLink.classList.remove('active'));
+                        this.classList.add('active');
+                        const href = this.getAttribute('href');
+                        if (href) {
+                            window.location.href = href;
+                        }
+                    });
+                });
+            })
+           .catch(error => {
+                console.error('Error loading navbar:', error);
+            });
 
         flatpickr(calendar, {
             defaultDate: new Date(),
@@ -134,8 +249,9 @@
                     const event = eventData[dateKey];
                     eventContent.innerHTML = `<p><strong>${dateKey}</strong>: ${event.summary}<br>${event.description}</p>`;
                 } else {
-                    eventContent.innerHTML = '该日期暂无事件信息';
+                    eventContent.innerHTML = '<p>该日期暂无事件信息</p>';
                 }
+                eventDetails.classList.add('show');
             }
         });
     </script>
