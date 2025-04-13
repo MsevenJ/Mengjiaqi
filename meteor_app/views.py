@@ -67,12 +67,14 @@ def get_astronomy_events(request):
                 }
                 event_list.append(event_dict)
             logger.info(f"Fetched {len(event_list)} events for date range {date_start_str} - {date_end_str}")
-            logger.info(f"Event data: {event_list}")  # 输出查询到的事件数据
+            print(f"Fetched {len(event_list)} events for date range {date_start_str} - {date_end_str}")
             return JsonResponse({'events': event_list})
         except Exception as e:
             logger.error(f"Error fetching events: {e}")
+            print(f"Error fetching events: {e}")
             return JsonResponse({'error': str(e)}, status=500)
     logger.error("No date range provided")
+    print("No date range provided")
     return JsonResponse({'error': 'No date range provided'}, status=400)
 
 def import_ics_data(request):
