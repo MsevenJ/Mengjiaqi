@@ -41,6 +41,9 @@ class AstronomyEvent(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
 
+    class Meta:
+        db_table = 'login'  # 指定新的表名
+
     def __str__(self):
         return self.summary
 

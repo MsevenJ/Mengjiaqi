@@ -7,4 +7,8 @@ urlpatterns = [
     path('navbar/', views.navbar, name='navbar'),
     path('get-astronomy-events/', views.get_astronomy_events, name='get_astronomy_events'),
     path('import-ics-data/', views.import_ics_data, name='import_ics_data'),
+    path('login/', views.login_view, name='login'),
+    path('register/', views.register_view, name='register'),
+    path('logout/', views.logout_view, name='logout'),
+    path('', views.login_view, name='index'),
 ]

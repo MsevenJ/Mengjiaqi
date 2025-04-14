@@ -1,3 +1,4 @@
+<!-- 新建文件夹/meteor_app/templates/astronomy_calendar.html -->
 <!DOCTYPE html>
 <html lang="en">
 
@@ -5,7 +6,12 @@
     <meta charset="UTF-8">
     <title>天象日历</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: Arial, sans-serif;
             display: flex;
@@ -13,19 +19,20 @@
             margin: 0;
             background-color: #000;
             align-items: center;
+            overflow-x: hidden;
         }
 
         .image-wrapper {
-            width: 584px; /* 730 * 0.8 */
-            height: 584px; /* 730 * 0.8 */
-            margin-left: 1em; /* 距离左边边界一指宽 */
+            width: 45vw;
+            height: auto;
+            margin-left: 1em;
             display: flex;
             align-items: center;
         }
 
         .image-wrapper img {
-            width: 584px; /* 730 * 0.8 */
-            height: 584px; /* 730 * 0.8 */
+            width: 100%;
+            height: auto;
             object-fit: contain;
         }
 
@@ -73,13 +80,13 @@
 
         /* 日历容器样式 */
         #calendar-container {
-            width: 300px;
-            background-color: rgba(0, 0, 0, 0.5);
+            width: 20vw;
+            background-color: rgba(0, 0, 0, 0.2);
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             padding: 20px;
             margin-left: auto;
-            margin-right: 1em;
+            margin-right: 5em;
             margin-top: 60px;
         }
 
@@ -89,23 +96,34 @@
 
         #event-details {
             margin-top: 20px;
+            width: 20vw;
             padding: 10px;
             border: 1px solid #ccc;
             border-radius: 4px;
             background-color: white;
             opacity: 0;
-            -webkit-transition: opacity 0.5s ease;
-            -moz-transition: opacity 0.5s ease;
-            -o-transition: opacity 0.5s ease;
-            transition: opacity 0.5s ease; /* 平滑显示动画 */
+            -webkit-transition: opacity 0.7s ease;
+            -moz-transition: opacity 0.7s ease;
+            -o-transition: opacity 0.7s ease;
+            transition: opacity 0.7s ease;
+            max-height: 200px; /* 固定高度 */
+            overflow-y: auto; /* 超出高度显示滚动条 */
+            position: relative;
         }
 
         #event-details.show {
             opacity: 1;
         }
 
-        #event-details.show {
-            opacity: 1;
+        #event-details .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            cursor: pointer;
+        }
+
+        #search-bar {
+            width: 600px; /* 固定搜索栏宽度 */
         }
 
        .flatpickr-day.has-event {
@@ -124,10 +142,13 @@
     <div id="calendar-container">
         <div id="calendar"></div>
         <div id="event-details">
+            <span class="close-btn" onclick="closeEventDetails()">&times;</span>
             <h2>当天天象信息</h2>
             <div id="event-content"></div>
         </div>
     </div>
+    <!-- 引入搜索栏 -->
+    {% include 'search_bar.html' %}
 
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script>
@@ -138,8 +159,8 @@
 
         // 加载菜单栏
         fetch('{% url 'navbar' %}')
-          .then(response => response.text())
-          .then(data => {
+           .then(response => response.text())
+           .then(data => {
                 const navbarContainer = document.getElementById('navbar-container');
                 navbarContainer.innerHTML = data;
                 const navbar = document.querySelector('.navbar');
@@ -253,6 +274,51 @@
                 }
                 eventDetails.classList.add('show');
             }
+        });
+
+        // 处理搜索表单提交事件
+        const searchForm = document.getElementById('search-form');
+        const searchResults = document.getElementById('search-results');
+
+        searchForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            const eventType = document.getElementById('event-type').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+
+            let url = '/get-astronomy-events/?';
+            if (eventType) {
+                url += `summary=${eventType}&`;
+            }
+            if (startDate) {
+                url += `date_start=${startDate}&`;
+            }
+            if (endDate) {
+                url += `date_end=${endDate}&`;
+            }
+            url = url.slice(0, -1); // 移除最后一个 &
+
+            fetch(url)
+              .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+              .then(data => {
+                    console.log('Received search results:', data);
+                    const events = data.events;
+                    searchResults.innerHTML = '';
+                    events.forEach(event => {
+                        const resultItem = document.createElement('p');
+                        resultItem.innerHTML = `<strong>${event.summary}</strong> (${event.dtstart} - ${event.dtend})<br>${event.description}`;
+                        searchResults.appendChild(resultItem);
+                    });
+                })
+              .catch(error => {
+                    console.error('Error fetching search results:', error);
+                    searchResults.innerHTML = '<p>搜索出错，请重试。</p>';
+                });
         });
     </script>
 </body>

@@ -1,8 +1,10 @@
 import logging
 from django.http import JsonResponse, HttpResponse
 from django.shortcuts import render
+from django.templatetags.static import static  # 导入 static 函数
 from .models import AstronomyEvent
-from datetime import date
+import datetime
+from .moon_phase_image import get_date_image
 
 logger = logging.getLogger(__name__)
 
@@ -23,59 +25,41 @@ def meteor_shower_prediction(request):
     return render(request, 'prediction_form.html')
 
 def astronomy_calendar(request):
-    return render(request, 'astronomy_calendar.html')
+    today = datetime.date.today()
+    image_path = get_date_image(today)
+    if image_path is None:
+        logger.warning("Failed to get moon phase image. Using default background.")
+        image_path = static('default_background.jpg')  # 使用静态文件 URL
+    return render(request, 'astronomy_calendar.html', {'moon_phase_image': image_path})
 
 def navbar(request):
     return render(request, 'navbar.html')
 
-# def get_astronomy_events(request):
-#     date_start_str = request.GET.get('date_start')
-#     date_end_str = request.GET.get('date_end')
-#     if date_start_str and date_end_str:
-#         try:
-#             events = AstronomyEvent.objects.filter(start_date__lte=date_end_str, end_date__gte=date_start_str)
-#             event_list = []
-#             for event in events:
-#                 event_dict = {
-#                     'summary': str(event.summary),
-#                     'description': str(event.description),
-#                     'dtstart': event.start_date.strftime('%Y-%m-%d'),
-#                     'dtend': event.end_date.strftime('%Y-%m-%d')
-#                 }
-#                 event_list.append(event_dict)
-#             logger.info(f"Fetched {len(event_list)} events for date range {date_start_str} - {date_end_str}")
-#             return JsonResponse({'events': event_list})
-#         except Exception as e:
-#             logger.error(f"Error fetching events: {e}")
-#             return JsonResponse({'error': str(e)}, status=500)
-#     logger.error("No date range provided")
-#     return JsonResponse({'error': 'No date range provided'}, status=400)
-
 def get_astronomy_events(request):
     date_start_str = request.GET.get('date_start')
     date_end_str = request.GET.get('date_end')
+    summary = request.GET.get('summary')
+
+    query = AstronomyEvent.objects.all()
+
     if date_start_str and date_end_str:
-        try:
-            events = AstronomyEvent.objects.filter(start_date__lte=date_end_str, end_date__gte=date_start_str)
-            event_list = []
-            for event in events:
-                event_dict = {
-                    'summary': str(event.summary),
-                    'description': str(event.description),
-                    'dtstart': event.start_date.strftime('%Y-%m-%d'),
-                    'dtend': event.end_date.strftime('%Y-%m-%d')
-                }
-                event_list.append(event_dict)
-            logger.info(f"Fetched {len(event_list)} events for date range {date_start_str} - {date_end_str}")
-            print(f"Fetched {len(event_list)} events for date range {date_start_str} - {date_end_str}")
-            return JsonResponse({'events': event_list})
-        except Exception as e:
-            logger.error(f"Error fetching events: {e}")
-            print(f"Error fetching events: {e}")
-            return JsonResponse({'error': str(e)}, status=500)
-    logger.error("No date range provided")
-    print("No date range provided")
-    return JsonResponse({'error': 'No date range provided'}, status=400)
+        query = query.filter(start_date__lte=date_end_str, end_date__gte=date_start_str)
+    if summary:
+        query = query.filter(summary__icontains=summary)
+
+    event_list = []
+    for event in query:
+        event_dict = {
+            'summary': str(event.summary),
+            'description': str(event.description),
+            'dtstart': event.start_date.strftime('%Y-%m-%d'),
+            'dtend': event.end_date.strftime('%Y-%m-%d')
+        }
+        event_list.append(event_dict)
+
+    logger.info(f"Fetched {len(event_list)} events for the query.")
+    print(f"Fetched {len(event_list)} events for the query.")
+    return JsonResponse({'events': event_list})
 
 def import_ics_data(request):
     from .astronomy_calendar_integration import import_ics_to_db
