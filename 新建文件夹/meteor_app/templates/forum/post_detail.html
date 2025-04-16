@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <!-- 加载静态文件标签 -->
+    {% load static %}
+    <meta charset="UTF-8">
+    <title>{{ post.title }}</title>
+    <!-- 引入 flatpickr CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen - Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            color: #e2e8f0;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        /* 星空背景样式 */
+       .starry-sky {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to bottom, #000000 0%, #050e1b 100%);
+            z-index: -1;
+        }
+
+       .star {
+            position: absolute;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 5s infinite;
+        }
+
+        @keyframes twinkle {
+            0% {
+                opacity: 0.2;
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0.2;
+            }
+        }
+
+        /* 导航栏样式 */
+       .navbar {
+            background-color: rgba(10, 25, 47, 0.7); /* 半透明深蓝色背景 */
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+       .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+       .navbar li {
+            margin: 0 1rem;
+        }
+
+       .navbar a {
+            display: block;
+            color: #e2e8f0;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            border-radius: 8px;
+        }
+
+       .navbar a:hover {
+            color: #63b3ed;
+        }
+
+       .navbar a.active {
+            background-color: #e2e8f0;
+            color: #0a192f;
+        }
+
+        /* 文章详情内容样式 */
+       .post-detail-content {
+            padding-top: 60px;
+            padding: 60px 20px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+       .post-container {
+            background-color: rgba(16, 38, 70, 0.5);
+            border: 2px solid #64ffda;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.3);
+            transition: all 0.3s ease;
+        }
+
+       .post-container:hover {
+            background-color: rgba(22, 52, 95, 0.7);
+            border-color: #50d8b4;
+            box-shadow: 0 0 20px rgba(100, 255, 218, 0.6);
+        }
+
+       .post-container h1 {
+            color: #64ffda;
+            margin-top: 0;
+        }
+
+       .post-container p {
+            margin: 0 0 10px 0;
+        }
+
+       .post-container img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+       .post-container a {
+            color: #64ffda;
+            text-decoration: none;
+        }
+
+       .post-container a:hover {
+            text-decoration: underline;
+        }
+
+       .comments-section h2 {
+            color: #64ffda;
+        }
+
+       .comments-section ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+       .comments-section li {
+            background-color: rgba(16, 38, 70, 0.3);
+            border: 1px solid #1a365d;
+            border-radius: 4px;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 0 5px rgba(26, 54, 93, 0.3);
+            transition: all 0.3s ease;
+        }
+
+       .comments-section li:hover {
+            background-color: rgba(22, 52, 95, 0.5);
+            border-color: #64ffda;
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.3);
+        }
+
+       .comment-form h2 {
+            color: #64ffda;
+        }
+
+       .comment-form textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #1a365d;
+            border-radius: 4px;
+            background-color: rgba(10, 25, 47, 0.8);
+            color: #e2e8f0;
+            margin-bottom: 10px;
+            box-shadow: 0 0 5px rgba(26, 54, 93, 0.5);
+        }
+
+       .comment-form button {
+            padding: 10px 20px;
+            background-color: #64ffda;
+            color: #0a192f;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(100, 255, 218, 0.5);
+        }
+
+       .comment-form button:hover {
+            background-color: #50d8b4;
+            box-shadow: 0 0 10px rgba(100, 255, 218, 0.8);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 星空背景 -->
+    <div class="starry-sky" id="starry-sky"></div>
+
+    <!-- 导航栏容器 -->
+    <div id="navbar-container"></div>
+
+    <!-- 文章详情内容 -->
+    <div class="post-detail-content">
+        <div class="post-container">
+            <h1>{{ post.title }}</h1>
+            <p>{{ post.content }}</p>
+            <p>作者: {{ post.author.username }} | 创建时间: {{ post.created_at }}</p>
+            {% if post.image %}
+            <img src="{{ post.image.url }}" alt="{{ post.title }}" width="400">
+            {% endif %}
+            {% if is_favorite %}
+            <a href="{% url 'forum_post_favorite' post_id=post.id %}">取消收藏</a>
+            {% else %}
+            <a href="{% url 'forum_post_favorite' post_id=post.id %}">收藏</a>
+            {% endif %}
+        </div>
+
+        <div class="comments-section">
+            <h2>评论</h2>
+            <ul>
+                {% for comment in comments %}
+                <li>
+                    <p>{{ comment.content }}</p>
+                    <p>评论者: {{ comment.author.username }} | 评论时间: {{ comment.created_at }}</p>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="comment-form">
+            <h2>发表评论</h2>
+            <form action="{% url 'forum_post_comment' post_id=post.id %}" method="post">
+                {% csrf_token %}
+                <textarea name="content" rows="4" cols="50" required></textarea>
+                <button type="submit">提交评论</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 生成星空
+        const starrySky = document.getElementById('starry-sky');
+        const numStars = 200;
+
+        for (let i = 0; i < numStars; i++) {
+            const star = document.createElement('div');
+            star.classList.add('star');
+            const size = Math.random() * 2;
+            star.style.width = `${size}px`;
+            star.style.height = `${size}px`;
+            star.style.left = `${Math.random() * 100}vw`;
+            star.style.top = `${Math.random() * 100}vh`;
+            star.style.animationDelay = `${Math.random() * 5}s`;
+            starrySky.appendChild(star);
+        }
+
+        // 加载菜单栏
+        fetch('{% url 'navbar' %}')
+           .then(response => response.text())
+           .then(data => {
+                const navbarContainer = document.getElementById('navbar-container');
+                navbarContainer.innerHTML = data;
+
+                const navbar = document.querySelector('.navbar');
+
+                // 导航栏升降动画
+                let prevScrollPos = window.pageYOffset;
+                window.onscroll = function () {
+                    const currentScrollPos = window.pageYOffset;
+                    if (prevScrollPos > currentScrollPos) {
+                        navbar.classList.remove('hidden');
+                    } else {
+                        navbar.classList.add('hidden');
+                    }
+                    prevScrollPos = currentScrollPos;
+                };
+
+                // 处理导航栏点击事件，突出显示当前选中项
+                const navLinks = document.querySelectorAll('.navbar a');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function (e) {
+                        navLinks.forEach(navLink => navLink.classList.remove('active'));
+                        this.classList.add('active');
+                        const href = this.getAttribute('href');
+                        if (href) {
+                            window.location.href = href;
+                        }
+                    });
+                });
+            })
+           .catch(error => {
+                console.error('Error loading navbar:', error);
+            });
+    </script>
+</body>
+
+</html>

@@ -1,13 +1,17 @@
 import logging
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse
 from django.templatetags.static import static  # 导入 static 函数
 from .models import AstronomyEvent
 import datetime
 from .moon_phase_image import get_date_image
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
+from .models import ForumPost, ForumComment, ForumFavorite
+from .forms import ForumPostForm, ForumCommentForm
 from django.contrib.auth.decorators import login_required
+from django.http import JsonResponse
+from .stellarium_scripts.stellarium_api import send_stellarium_command
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +26,7 @@ def login_view(request):
             next_url = request.GET.get('next')
             if next_url:
                 return redirect(next_url)
-            return redirect('astronomy_calendar')
+            return redirect('meteor_shower_prediction')
         else:
             error_message = "Invalid username or password."
             return render(request, 'login.html', {'error_message': error_message})
@@ -102,3 +106,53 @@ def import_ics_data(request):
     return HttpResponse("ICS data imported successfully.")
 
 
+@login_required
+def forum_index(request):
+    posts = ForumPost.objects.all().order_by('-created_at')
+    return render(request, 'forum/index.html', {'posts': posts})
+
+@login_required
+def forum_post_detail(request, post_id):
+    post = get_object_or_404(ForumPost, id=post_id)
+    comments = ForumComment.objects.filter(post=post).order_by('created_at')
+    is_favorite = ForumFavorite.objects.filter(post=post, user=request.user).exists()
+    return render(request, 'forum/post_detail.html', {'post': post, 'comments': comments, 'is_favorite': is_favorite})
+
+@login_required
+def forum_post_new(request):
+    if request.method == 'POST':
+        form = ForumPostForm(request.POST, request.FILES)
+        if form.is_valid():
+            post = form.save(commit=False)
+            post.author = request.user
+            post.save()
+            return redirect('forum_post_detail', post_id=post.id)
+    else:
+        form = ForumPostForm()
+    return render(request, 'forum/post_new.html', {'form': form})
+
+@login_required
+def forum_post_comment(request, post_id):
+    post = get_object_or_404(ForumPost, id=post_id)
+    if request.method == 'POST':
+        content = request.POST.get('content')
+        if content:
+            ForumComment.objects.create(post=post, author=request.user, content=content)
+    return redirect('forum_post_detail', post_id=post.id)
+
+@login_required
+def forum_post_favorite(request, post_id):
+    post = get_object_or_404(ForumPost, id=post_id)
+    favorite, created = ForumFavorite.objects.get_or_create(post=post, user=request.user)
+    if not created:
+        favorite.delete()
+    return redirect('forum_post_detail', post_id=post.id)
+
+@login_required
+def forum_search(request):
+    query = request.GET.get('q')
+    if query:
+        posts = ForumPost.objects.filter(title__icontains=query)
+    else:
+        posts = ForumPost.objects.all()
+    return render(request, 'forum/index.html', {'posts': posts})
