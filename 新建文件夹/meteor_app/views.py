@@ -1,17 +1,21 @@
 import logging
-from django.http import HttpResponse
-from django.templatetags.static import static  # 导入 static 函数
-from .models import AstronomyEvent
-import datetime
+from django.templatetags.static import static
 from .moon_phase_image import get_date_image
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.forms import UserCreationForm
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import ForumPost, ForumComment, ForumFavorite
-from .forms import ForumPostForm, ForumCommentForm
-from django.contrib.auth.decorators import login_required
+from .forms import ForumPostForm
 from django.http import JsonResponse
-from .stellarium_scripts.stellarium_api import send_stellarium_command
+import pandas as pd
+from .models import MeteorShower
+from django.http import HttpResponse
+import re
+from datetime import datetime, date, time
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
+from .models import AstronomyEvent
+
 
 
 logger = logging.getLogger(__name__)
@@ -47,24 +51,8 @@ def logout_view(request):
     logout(request)
     return redirect('login')
 
-def meteor_shower_prediction(request):
-    if request.method == 'POST':
-        city_name = request.POST.get('city')
-        try:
-            city = City.objects.get(name=city_name)
-            visible_constellations = Constellation.objects.filter(
-                min_latitude__lte=city.latitude,
-                max_latitude__gte=city.latitude
-            )
-            meteor_showers = MeteorShower.objects.filter(radiant_constellation__in=visible_constellations)
-            return render(request, 'prediction_result.html', {'meteor_showers': meteor_showers})
-        except City.DoesNotExist:
-            error_message = "City not found."
-            return render(request, 'prediction_form.html', {'error_message': error_message})
-    return render(request, 'prediction_form.html')
-
 def astronomy_calendar(request):
-    today = datetime.date.today()
+    today = datetime.today()
     image_path = get_date_image(today)
     if image_path is None:
         logger.warning("Failed to get moon phase image. Using default background.")
@@ -156,3 +144,175 @@ def forum_search(request):
     else:
         posts = ForumPost.objects.all()
     return render(request, 'forum/index.html', {'posts': posts})
+
+#处理流星雨数据
+def parse_date(date_str, year=2025):
+    if isinstance(date_str, datetime):
+        date_str = date_str.strftime('%d-%b')
+    cleaned_date_str = re.sub(r'[()（）]', '', date_str)
+    try:
+        # 尝试按 '%d-%b-%Y' 格式解析
+        date_obj = datetime.strptime(f'{cleaned_date_str}-{year}', '%d-%b-%Y')
+        return date_obj.date()
+    except ValueError:
+        try:
+            # 尝试按 'YYYY-MM-DD HH:MM:SS' 格式解析
+            date_obj = datetime.strptime(cleaned_date_str, '%Y-%m-%d %H:%M:%S')
+            return date_obj.date()
+        except ValueError as e:
+            logger.debug(f"Failed to parse date '{date_str}': {e}")
+            return None
+#处理流星雨数据
+def parse_angle(angle_str):
+    cleaned = re.sub(r'[^\d.-]', '', angle_str)
+    try:
+        return float(cleaned)
+    except ValueError as e:
+        logger.debug(f"Failed to parse angle '{angle_str}': {e}")
+        return None
+#处理流星雨数据
+def parse_maximum_lambda(value):
+    try:
+        cleaned_value = re.sub(r'[^\d.]', '', value)
+        return float(cleaned_value)
+    except (ValueError, TypeError) as e:
+        logger.debug(f"Failed to parse maximum lambda '{value}': {e}")
+        return None
+#处理流星雨数据
+def import_meteor_shower_data(request):
+    try:
+        # 指定 Maximum_Date 列为字符串类型
+        df = pd.read_excel('meteor_shower_2025.xlsx', dtype={'Maximum_Date': str})
+        for index, row in df.iterrows():
+            logger.debug(f"Processing row {index}: {row}")
+
+            name = row['Shower']
+            activity = row['Activity']
+            maximum_date_str = row['Maximum_Date']
+            maximum_date = parse_date(maximum_date_str)
+            if maximum_date is None:
+                logger.warning(f"Skipping row {index} due to invalid maximum date: {maximum_date_str}")
+                continue
+
+            maximum_lambda_str = row['Maximum_λ⊙']
+            maximum_lambda = parse_maximum_lambda(maximum_lambda_str)
+            if maximum_lambda is None:
+                logger.warning(f"Skipping row {index} due to invalid maximum lambda: {maximum_lambda_str}")
+                continue
+
+            radiant_ra_str = row['Radiant_α']
+            radiant_ra = parse_angle(radiant_ra_str)
+            if radiant_ra is None:
+                logger.warning(f"Skipping row {index} due to invalid radiant α: {radiant_ra_str}")
+                continue
+
+            radiant_dec_str = row['Radiant_δ']
+            radiant_dec = parse_angle(radiant_dec_str)
+            if radiant_dec is None:
+                logger.warning(f"Skipping row {index} due to invalid radiant δ: {radiant_dec_str}")
+                continue
+
+            try:
+                velocity = float(row['V∞（km/s）'])
+            except ValueError as e:
+                logger.warning(f"Skipping row {index} due to invalid velocity: {row['V∞（km/s）']}, {e}")
+                continue
+
+            try:
+                r_value = float(row['r'])
+            except ValueError as e:
+                logger.warning(f"Skipping row {index} due to invalid r value: {row['r']}, {e}")
+                continue
+
+            try:
+                zhr = int(row['ZHR'])
+            except ValueError as e:
+                logger.warning(f"Skipping row {index} due to invalid ZHR: {row['ZHR']}, {e}")
+                continue
+
+            MeteorShower.objects.get_or_create(
+                name=name,
+                activity=activity,
+                maximum_date=maximum_date,
+                maximum_lambda=maximum_lambda,
+                radiant_ra=radiant_ra,
+                radiant_dec=radiant_dec,
+                velocity=velocity,
+                r_value=r_value,
+                zhr=zhr
+            )
+            logger.debug(f"Successfully imported row {index}")
+
+        return HttpResponse("Meteor shower data imported successfully.")
+    except Exception as e:
+        logger.error(f"Error importing data: {e}")
+        return HttpResponse(f"Error importing data: {str(e)}")
+
+
+def meteor_shower_prediction(request):
+    # 获取当前的日期和时间
+    now = datetime.now()
+    # 使用 now 进行查询
+    upcoming_showers = MeteorShower.objects.filter(maximum_date__gte=now).order_by('maximum_date')
+    if upcoming_showers.exists():
+        default_shower = upcoming_showers.first()
+    else:
+        default_shower = None
+    return render(request, 'meteor_shower_prediction.html',
+                  {'upcoming_showers': upcoming_showers, 'default_shower': default_shower})
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import PasswordChangeForm
+from django.shortcuts import render, redirect
+from django.contrib.auth import logout
+from.models import AstronomyEvent  # 假设存在AstronomyEvent模型来存储天象活动
+
+@login_required
+def my_profile(request):
+    astronomy_events = AstronomyEvent.objects.all()  # 这里先简单获取所有天象活动，后续可根据实际需求过滤
+    return render(request, 'my_profile.html', {
+        'astronomy_events': astronomy_events,
+        'selected_function': None
+    })
+
+@login_required
+def update_profile(request):
+    if request.method == 'POST':
+        # 这里可以添加更新个人信息的逻辑
+        return redirect('my_profile')
+    return render(request, 'my_profile.html', {'selected_function': 'update_profile'})
+
+@login_required
+def change_password(request):
+    if request.method == 'POST':
+        form = PasswordChangeForm(request.user, request.POST)
+        if form.is_valid():
+            user = form.save()
+            logout(request)
+            return redirect('login')
+    else:
+        form = PasswordChangeForm(request.user)
+    return render(request, 'my_profile.html', {'selected_function': 'change_password'})
+
+@login_required
+def view_favorite_posts(request):
+    favorite_posts = ForumFavorite.objects.filter(user_id=request.user.id)
+    return render(request, 'my_profile.html', {
+        'favorite_posts': favorite_posts,
+        'selected_function': 'view_favorite_posts'
+    })
+
+@login_required
+def view_my_posts(request):
+    my_posts = ForumPost.objects.filter(author=request.user)
+    return render(request, 'my_profile.html', {
+        'my_posts': my_posts,
+        'selected_function': 'view_my_posts'
+    })
+
+@login_required
+def view_astronomy_events(request):
+    return render(request, 'my_profile.html', {'selected_function': 'view_astronomy_events'})
+
+@login_required
+def view_reminders(request):
+    return render(request, 'my_profile.html', {'selected_function': 'view_reminders'})

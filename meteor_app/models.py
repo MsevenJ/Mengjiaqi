@@ -26,15 +26,6 @@ class City(models.Model):
         return self.name
 
 
-class MeteorShower(models.Model):
-    name = models.CharField(max_length=100)
-    radiant_constellation = models.ForeignKey(Constellation, on_delete=models.CASCADE)
-    start_date = models.DateField()
-    end_date = models.DateField()
-
-    def __str__(self):
-        return self.name
-
 class AstronomyEvent(models.Model):
     summary = models.CharField(max_length=255)
     description = models.TextField()
@@ -75,3 +66,21 @@ class ForumFavorite(models.Model):
 
     def __str__(self):
         return f"{self.user.username} favorites {self.post.title}"
+
+from django.db import models
+
+
+# 新建文件夹/meteor_app/models.py
+class MeteorShower(models.Model):
+    name = models.CharField(max_length=200)
+    activity = models.CharField(max_length=200)
+    maximum_date = models.DateTimeField()
+    maximum_lambda = models.FloatField()
+    radiant_ra = models.FloatField()
+    radiant_dec = models.FloatField()
+    velocity = models.FloatField()
+    r_value = models.FloatField()
+    zhr = models.IntegerField()
+
+    def __str__(self):
+        return self.name

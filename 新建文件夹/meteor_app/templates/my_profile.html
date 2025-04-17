@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的信息</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            display: flex;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* 顶部导航栏样式 */
+        .navbar {
+            background-color: #161b22;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 1rem;
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+        }
+
+        .navbar li {
+            margin: 0;
+        }
+
+        .navbar a {
+            color: #c9d1d9;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a:hover {
+            color: #58a6ff;
+        }
+
+        /* 左侧功能栏样式 */
+        .sidebar {
+            width: 200px;
+            background-color: #161b22;
+            padding: 20px;
+            height: 100vh;
+            position: fixed;
+            top: 4rem; /* 留出顶部导航栏的空间 */
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .sidebar button {
+            background-color: #0d1117;
+            color: #c9d1d9;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .sidebar button:hover {
+            background-color: #21262d;
+        }
+
+        /* 内容区域样式 */
+        .content {
+            margin-left: 220px;
+            padding: 6rem 2rem 2rem; /* 留出顶部导航栏和左侧功能栏的空间 */
+            width: calc(100% - 220px);
+        }
+
+        .card {
+            background-color: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 0.5rem;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            color: #58a6ff;
+        }
+
+        form label {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        form input {
+            width: 100%;
+            padding: 0.75rem;
+            margin-bottom: 1.5rem;
+            background-color: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 0.25rem;
+            color: #c9d1d9;
+        }
+
+        form button {
+            padding: 0.75rem 1.5rem;
+            background-color: #238636;
+            border: none;
+            border-radius: 0.25rem;
+            color: #fff;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        form button:hover {
+            background-color: #2ea043;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        ul li {
+            margin-bottom: 1rem;
+        }
+
+        ul li a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+
+        ul li a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- 顶部导航栏 -->
+    <div class="navbar">
+        <ul>
+            <li><a href="{% url 'meteor_shower_prediction' %}">流星雨预测</a></li>
+            <li><a href="{% url 'astronomy_calendar' %}">天文事件预测</a></li>
+            <li><a href="{% url 'forum_index' %}">论坛</a></li>
+            <li><a href="{% url 'my_profile' %}">我的</a></li>
+        </ul>
+    </div>
+
+    <!-- 左侧功能栏 -->
+    <div class="sidebar">
+        <button onclick="location.href='{% url 'update_profile' %}'">修改个人信息</button>
+        <button onclick="location.href='{% url 'change_password' %}'">修改密码</button>
+        <button onclick="location.href='{% url 'view_favorite_posts' %}'">查看收藏的论坛帖子</button>
+        <button onclick="location.href='{% url 'view_my_posts' %}'">查看发表的论坛帖子</button>
+        <button onclick="location.href='{% url 'view_astronomy_events' %}'">关注的天文事件</button>
+        <button onclick="location.href='{% url 'view_reminders' %}'">天文事件订阅提醒</button>
+    </div>
+
+    <!-- 内容区域 -->
+    <div class="content">
+        {% if not selected_function %}
+        <div class="card">
+            <h2>本人关注的天象活动列表</h2>
+            <ul>
+                {% for event in astronomy_events %}
+                <li>{{ event.title }} - {{ event.date }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if selected_function == 'update_profile' %}
+        <!-- 修改个人信息 -->
+        <div class="card">
+            <h2>修改个人信息</h2>
+            <form action="{% url 'update_profile' %}" method="post">
+                {% csrf_token %}
+                <label for="username">用户名</label>
+                <input type="text" id="username" name="username" value="{{ user.username }}">
+                <label for="email">邮箱</label>
+                <input type="email" id="email" name="email" value="{{ user.email }}">
+                <button type="submit">保存</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if selected_function == 'change_password' %}
+        <!-- 修改密码 -->
+        <div class="card">
+            <h2>修改密码</h2>
+            <form action="{% url 'change_password' %}" method="post">
+                {% csrf_token %}
+                <label for="old_password">旧密码</label>
+                <input type="password" id="old_password" name="old_password" required>
+                <label for="new_password1">新密码</label>
+                <input type="password" id="new_password1" name="new_password1" required>
+                <label for="new_password2">确认新密码</label>
+                <input type="password" id="new_password2" name="new_password2" required>
+                <button type="submit">修改</button>
+            </form>
+        </div>
+        {% endif %}
+
+        {% if selected_function == 'view_favorite_posts' %}
+        <!-- 查看收藏的论坛帖子 -->
+        <div class="card">
+            <h2>收藏的论坛帖子</h2>
+            <ul>
+                {% for favorite in favorite_posts %}
+                <li><a href="{% url 'forum_post_detail' post_id=favorite.post_id %}">{{ favorite.post_id }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if selected_function == 'view_my_posts' %}
+        <!-- 查看发表的论坛帖子 -->
+        <div class="card">
+            <h2>发表的论坛帖子</h2>
+            <ul>
+                {% for post in my_posts %}
+                <li><a href="{% url 'forum_post_detail' post_id=post.id %}">{{ post.title }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        {% if selected_function == 'view_astronomy_events' %}
+        <!-- 查看关注的天文事件（待实现） -->
+        <div class="card">
+            <h2>关注的天文事件</h2>
+            <p>此功能待实现</p>
+        </div>
+        {% endif %}
+
+        {% if selected_function == 'view_reminders' %}
+        <!-- 天文事件订阅提醒（待实现） -->
+        <div class="card">
+            <h2>天文事件订阅提醒</h2>
+            <p>此功能待实现</p>
+        </div>
+        {% endif %}
+    </div>
+</body>
+
+</html>

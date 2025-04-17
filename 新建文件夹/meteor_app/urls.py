@@ -2,7 +2,7 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    path('predict/', views.meteor_shower_prediction, name='meteor_shower_prediction'),
+    path('meteor-shower-prediction/', views.meteor_shower_prediction, name='meteor_shower_prediction'),
     path('astronomy-calendar/', views.astronomy_calendar, name='astronomy_calendar'),
     path('navbar/', views.navbar, name='navbar'),
     path('get-astronomy-events/', views.get_astronomy_events, name='get_astronomy_events'),
@@ -11,6 +11,9 @@ urlpatterns = [
     path('register/', views.register_view, name='register'),
     path('logout/', views.logout_view, name='logout'),
     path('', views.login_view, name='index'),
+
+
+    #论坛
     path('forum/', views.forum_index, name='forum_index'),
     path('forum/post/<int:post_id>/', views.forum_post_detail, name='forum_post_detail'),
     path('forum/post/new/', views.forum_post_new, name='forum_post_new'),
@@ -18,4 +21,17 @@ urlpatterns = [
     path('forum/post/<int:post_id>/favorite/', views.forum_post_favorite, name='forum_post_favorite'),
     path('forum/search/', views.forum_search, name='forum_search'),
 
+
+    #处理流星雨数据
+    path('import-meteor-shower-data/', views.import_meteor_shower_data, name='import_meteor_shower_data'),
+
+
+    #“我的”界面
+    path('my-profile/', views.my_profile, name='my_profile'),
+    path('update-profile/', views.update_profile, name='update_profile'),
+    path('change-password/', views.change_password, name='change_password'),
+    path('view-favorite-posts/', views.view_favorite_posts, name='view_favorite_posts'),
+    path('view-my-posts/', views.view_my_posts, name='view_my_posts'),
+    path('view-astronomy-events/', views.view_astronomy_events, name='view_astronomy_events'),
+    path('view-reminders/', views.view_reminders, name='view_reminders'),
 ]

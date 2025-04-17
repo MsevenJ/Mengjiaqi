@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D太阳系流星雨可视化</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #container {
+            width: 100vw;
+            height: 100vh;
+        }
+
+        #shower-select {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1;
+            padding: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: 1px solid white;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.132.2/examples/js/controls/OrbitControls.js"></script>
+</head>
+
+<body>
+    <select id="shower-select">
+        {% for shower in upcoming_showers %}
+        <option value="{{ shower.id }}" {% if shower == default_shower %}selected{% endif %}>{{ shower.name }}</option>
+        {% endfor %}
+    </select>
+    <div id="container"></div>
+    <script>
+        // 创建场景
+        const scene = new THREE.Scene();
+
+        // 创建相机
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 500;
+
+        // 创建渲染器
+        const renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('container').appendChild(renderer.domElement);
+
+        // 创建轨道控制器
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        // 创建太阳
+        const sunGeometry = new THREE.SphereGeometry(30, 32, 32);
+        const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+        const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+        scene.add(sun);
+
+        // 行星数据
+        const planetsData = [
+            { name: '水星', distance: 80, radius: 5, color: 0x808080, speed: 0.02 },
+            { name: '金星', distance: 120, radius: 7, color: 0xffa500, speed: 0.015 },
+            { name: '地球', distance: 160, radius: 8, color: 0x0000ff, speed: 0.01 },
+            { name: '火星', distance: 200, radius: 6, color: 0xff0000, speed: 0.008 },
+            { name: '木星', distance: 260, radius: 15, color: 0xa52a2a, speed: 0.003 },
+            { name: '土星', distance: 320, radius: 12, color: 0xffff00, speed: 0.002 },
+            { name: '天王星', distance: 380, radius: 10, color: 0xadd8e6, speed: 0.0015 },
+            { name: '海王星', distance: 440, radius: 10, color: 0x00008b, speed: 0.001 }
+        ];
+
+        const planets = [];
+        const planetOrbits = [];
+
+        // 创建行星和轨道
+        planetsData.forEach(planetData => {
+            // 创建行星
+            const planetGeometry = new THREE.SphereGeometry(planetData.radius, 32, 32);
+            const planetMaterial = new THREE.MeshBasicMaterial({ color: planetData.color });
+            const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+            planet.angle = 0;
+            planet.speed = planetData.speed;
+            planet.distance = planetData.distance;
+            scene.add(planet);
+            planets.push(planet);
+
+            // 创建行星轨道
+            const orbitPoints = [];
+            for (let i = 0; i < 100; i++) {
+                const angle = (i / 100) * Math.PI * 2;
+                const x = planetData.distance * Math.cos(angle);
+                const y = planetData.distance * Math.sin(angle);
+                orbitPoints.push(new THREE.Vector3(x, y, 0));
+            }
+            const orbitGeometry = new THREE.BufferGeometry().setFromPoints(orbitPoints);
+            const orbitMaterial = new THREE.LineBasicMaterial({ color: planetData.color, transparent: true, opacity: 0.5 });
+            const orbit = new THREE.LineLoop(orbitGeometry, orbitMaterial);
+            scene.add(orbit);
+            planetOrbits.push(orbit);
+        });
+
+        // 流星雨数据（从Django模板变量获取）
+        const meteorShowersData = [
+            {% for shower in upcoming_showers %}
+            {
+                id: {{ shower.id }},
+                radiant_ra: {{ shower.radiant_ra }},
+                radiant_dec: {{ shower.radiant_dec }},
+                velocity: {{ shower.velocity }},
+                zhr: {{ shower.zhr }}
+            }{% if not forloop.last %},{% endif %}
+            {% endfor %}
+        ];
+
+        let meteors = [];
+        let meteorShowerCircles = [];
+        let currentShowerData = meteorShowersData[0];
+        let offsetX;
+        let offsetY;
+        let tangentAngle;
+
+        // 更新流星雨
+        function updateMeteorShower(showerData) {
+            // 移除旧的流星和流星雨圈
+            meteors.forEach(meteor => {
+                scene.remove(meteor);
+            });
+            meteorShowerCircles.forEach(circle => {
+                scene.remove(circle);
+            });
+            meteors = [];
+            meteorShowerCircles = [];
+
+            currentShowerData = showerData;
+
+            const meteorCount = showerData.zhr / 3600 * 80 * 10000;
+
+            // 随机生成与行星轨道成切面的椭圆形流星雨轨道，且不超出八大行星轨道大小
+            const randomPlanetIndex = Math.floor(Math.random() * planets.length);
+            const randomPlanetData = planetsData[randomPlanetIndex];
+            const randomAngle = Math.random() * 2 * Math.PI;
+            tangentAngle = randomAngle + Math.PI / 2;
+            offsetX = randomPlanetData.distance * Math.cos(randomAngle);
+            offsetY = randomPlanetData.distance * Math.sin(randomAngle);
+
+            const semiMajorAxis = Math.min(randomPlanetData.distance, 440);
+            const semiMinorAxis = semiMajorAxis * 0.8;
+
+            const circlePoints = [];
+            for (let i = 0; i < 100; i++) {
+                const angle = (i / 100) * Math.PI * 2;
+                const x = offsetX + semiMajorAxis * Math.cos(angle + tangentAngle);
+                const y = offsetY + semiMinorAxis * Math.sin(angle + tangentAngle);
+                circlePoints.push(new THREE.Vector3(x, y, 0));
+            }
+            const circleGeometry = new THREE.BufferGeometry().setFromPoints(circlePoints);
+            const circleMaterial = new THREE.LineBasicMaterial({
+                color: 0x00ff00,
+                transparent: true,
+                opacity: 0.3,
+                linewidth: 2,
+                vertexColors: false
+            });
+            const meteorShowerCircle = new THREE.LineLoop(circleGeometry, circleMaterial);
+            scene.add(meteorShowerCircle);
+            meteorShowerCircles.push(meteorShowerCircle);
+
+            // 创建流星，使其群体性沿轨道运动且靠近太阳速度快
+            for (let i = 0; i < meteorCount; i++) {
+                const meteorGeometry = new THREE.SphereGeometry(1, 32, 32);
+                const meteorMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xffffff,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                const meteor = new THREE.Mesh(meteorGeometry, meteorMaterial);
+
+                const randomOrbitAngle = Math.random() * 2 * Math.PI;
+                // 引入随机偏移量，使流星群分布更宽
+                const randomOffset = (Math.random() - 0.5) * 2;
+                const x = offsetX + (semiMajorAxis + randomOffset) * Math.cos(randomOrbitAngle + tangentAngle);
+                const y = offsetY + (semiMinorAxis + randomOffset) * Math.sin(randomOrbitAngle + tangentAngle);
+                meteor.position.x = sun.position.x + x;
+                meteor.position.y = sun.position.y + y;
+
+                // 根据距离太阳远近计算速度，降低速度系数
+                const distanceFromSun = Math.sqrt((meteor.position.x - sun.position.x) ** 2 + (meteor.position.y - sun.position.y) ** 2);
+                const baseSpeed = showerData.velocity / 50;
+                const speed = baseSpeed * (440 / distanceFromSun);
+                const tangentSpeedAngle = Math.atan2(meteor.position.y - sun.position.y, meteor.position.x - sun.position.x) + Math.PI / 2;
+                meteor.velocity = {
+                    x: speed * Math.cos(tangentSpeedAngle),
+                    y: speed * Math.sin(tangentSpeedAngle)
+                };
+
+                scene.add(meteor);
+                meteors.push(meteor);
+            }
+        }
+
+        // 初始化默认流星雨
+        updateMeteorShower(currentShowerData);
+
+        // 监听选择框变化
+        const showerSelect = document.getElementById('shower-select');
+        showerSelect.addEventListener('change', function () {
+            const showerId = parseInt(this.value);
+            const selectedShowerData = meteorShowersData.find(shower => shower.id === showerId);
+            if (selectedShowerData) {
+                updateMeteorShower(selectedShowerData);
+            }
+        });
+
+        // 动画循环
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // 更新行星位置
+            planets.forEach(planet => {
+                planet.angle += planet.speed;
+                planet.position.x = sun.position.x + planet.distance * Math.cos(planet.angle);
+                planet.position.y = sun.position.y + planet.distance * Math.sin(planet.angle);
+                planet.position.z = 0;
+            });
+
+            // 更新流星位置
+            meteors.forEach(meteor => {
+                meteor.position.x += meteor.velocity.x;
+                meteor.position.y += meteor.velocity.y;
+
+                // 流星超出范围后重新定位到轨道附近
+                const distanceFromOrbitCenter = Math.sqrt((meteor.position.x - sun.position.x - offsetX) ** 2 + (meteor.position.y - sun.position.y - offsetY) ** 2);
+                const semiMajorAxis = Math.min(440, Math.sqrt(offsetX ** 2 + offsetY ** 2));
+                const semiMinorAxis = semiMajorAxis * 0.8;
+                if (distanceFromOrbitCenter > semiMajorAxis + 20 || distanceFromOrbitCenter < semiMajorAxis - 20) {
+                    const randomOrbitAngle = Math.random() * 2 * Math.PI;
+                    const randomOffset = (Math.random() - 0.5) * 2;
+                    const x = offsetX + (semiMajorAxis + randomOffset) * Math.cos(randomOrbitAngle + tangentAngle);
+                    const y = offsetY + (semiMinorAxis + randomOffset) * Math.sin(randomOrbitAngle + tangentAngle);
+                    meteor.position.x = sun.position.x + x;
+                    meteor.position.y = sun.position.y + y;
+
+                    const distanceFromSun = Math.sqrt((meteor.position.x - sun.position.x) ** 2 + (meteor.position.y - sun.position.y) ** 2);
+                    const baseSpeed = currentShowerData.velocity / 50;
+                    const speed = baseSpeed * (440 / distanceFromSun);
+                    const tangentSpeedAngle = Math.atan2(meteor.position.y - sun.position.y, meteor.position.x - sun.position.x) + Math.PI / 2;
+                    meteor.velocity = {
+                        x: speed * Math.cos(tangentSpeedAngle),
+                        y: speed * Math.sin(tangentSpeedAngle)
+                    };
+                }
+            });
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // 窗口大小改变时更新相机和渲染器
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+
+</html>
