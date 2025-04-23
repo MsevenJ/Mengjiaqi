@@ -20,7 +20,7 @@
             padding: 20px;
             height: 100vh;
             position: fixed;
-            top: 0; /* 让侧边栏从顶部开始，给navbar留出空间由其自身样式控制 */
+            top: 48.8px; /* 让侧边栏从顶部开始，给navbar留出空间由其自身样式控制 */
             display: flex;
             flex-direction: column;
             gap: 1rem;
@@ -107,11 +107,56 @@
         ul li a:hover {
             text-decoration: underline;
         }
+
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.7);
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .navbar.hidden {
+            transform: translateY(-100%);
+        }
+
+        .navbar ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .navbar li {
+            margin: 0 1rem;
+        }
+
+        .navbar a {
+            display: block;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            border-radius: 8px;
+        }
+
+        .navbar a:hover {
+            color: #63b3ed;
+        }
+
+        .navbar a.active {
+            background-color: white;
+            color: black;
+        }
     </style>
 </head>
 
 <body>
-    {% include 'navbar.html' %}
+    <div id="navbar-container"></div>
     <!-- 左侧功能栏 -->
     <div class="sidebar">
         <button onclick="location.href='{% url 'update_profile' %}'">修改个人信息</button>
@@ -120,6 +165,11 @@
         <button onclick="location.href='{% url 'view_my_posts' %}'">查看发表的论坛帖子</button>
         <button onclick="location.href='{% url 'view_astronomy_events' %}'">关注的天文事件</button>
         <button onclick="location.href='{% url 'view_reminders' %}'">天文事件订阅提醒</button>
+        <!-- 仅管理员可见的按钮 -->
+        {% if user.is_superuser %}
+        <button onclick="location.href='{% url 'user_management' %}'">拉黑用户</button>
+        <button onclick="location.href='{% url 'publish_announcement' %}'">发布公告</button>
+        {% endif %}
     </div>
     <!-- 内容区域 -->
     <div class="content">
@@ -206,6 +256,44 @@
         </div>
         {% endif %}
     </div>
+    <script>
+        // 加载菜单栏
+        fetch('{% url 'navbar' %}')
+          .then(response => response.text())
+          .then(data => {
+                const navbarContainer = document.getElementById('navbar-container');
+                navbarContainer.innerHTML = data;
+                const navbar = document.querySelector('.navbar');
+
+                // 导航栏升降动画
+                let prevScrollPos = window.pageYOffset;
+                window.onscroll = function () {
+                    const currentScrollPos = window.pageYOffset;
+                    if (prevScrollPos > currentScrollPos) {
+                        navbar.classList.remove('hidden');
+                    } else {
+                        navbar.classList.add('hidden');
+                    }
+                    prevScrollPos = currentScrollPos;
+                };
+
+                // 处理导航栏点击事件，突出显示当前选中项
+                const navLinks = document.querySelectorAll('.navbar a');
+                navLinks.forEach(link => {
+                    link.addEventListener('click', function (e) {
+                        navLinks.forEach(navLink => navLink.classList.remove('active'));
+                        this.classList.add('active');
+                        const href = this.getAttribute('href');
+                        if (href) {
+                            window.location.href = href;
+                        }
+                    });
+                });
+            })
+          .catch(error => {
+                console.error('Error loading navbar:', error);
+            });
+    </script>
 </body>
 
 </html>

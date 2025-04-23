@@ -1,166 +1,106 @@
-<!-- 新建文件夹/meteor_app/templates/astronomy_calendar.html -->
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <title>天象日历</title>
+    {% load static %}
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            min-height: 100vh;
-            margin: 0;
-            background-color: #000;
-            align-items: center;
-            overflow-x: hidden;
-        }
-
-        .image-wrapper {
-            width: 45vw;
-            height: auto;
-            margin-left: 1em;
-            display: flex;
-            align-items: center;
-        }
-
-        .image-wrapper img {
-            width: 100%;
-            height: auto;
-            object-fit: contain;
-        }
-
-        /* 导航栏样式 */
-        .navbar {
-            background-color: rgba(0, 0, 0, 0.7);
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            z-index: 1000;
-            transition: transform 0.3s ease;
-        }
-
-        .navbar ul {
-            list-style-type: none;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            justify-content: center;
-        }
-
-        .navbar li {
-            margin: 0 1rem;
-        }
-
-        .navbar a {
-            display: block;
-            color: white;
-            text-align: center;
-            padding: 14px 16px;
-            text-decoration: none;
-            transition: color 0.3s ease;
-            border-radius: 8px;
-        }
-
-        .navbar a:hover {
-            color: #63b3ed;
-        }
-
-        .navbar a.active {
-            background-color: white;
-            color: black;
-        }
-
-        /* 日历容器样式 */
-        #calendar-container {
-            width: 20vw;
-            background-color: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            margin-left: auto;
-            margin-right: 5em;
-            margin-top: 60px;
-        }
-
-        #calendar {
-            width: 100%;
-        }
-
-        #event-details {
-            margin-top: 20px;
-            width: 20vw;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background-color: white;
-            opacity: 0;
-            -webkit-transition: opacity 0.7s ease;
-            -moz-transition: opacity 0.7s ease;
-            -o-transition: opacity 0.7s ease;
-            transition: opacity 0.7s ease;
-            max-height: 200px; /* 固定高度 */
-            overflow-y: auto; /* 超出高度显示滚动条 */
-            position: relative;
-        }
-
-        #event-details.show {
-            opacity: 1;
-        }
-
-        #event-details .close-btn {
-            position: absolute;
-            top: 5px;
-            right: 5px;
-            cursor: pointer;
-        }
-
-        #search-bar {
-            width: 600px; /* 固定搜索栏宽度 */
-        }
-
-       .flatpickr-day.has-event {
-            background-color: #e0f7fa;
-            color: #00838f;
-            border-radius: 50%;
-        }
-    </style>
+    <link rel="stylesheet" href="{% static 'css/calendar.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://kit.fontawesome.com/f872aa06ea.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
+    <!-- 左侧功能选择栏 -->
+    <div id="function-selector">
+        <ul>
+            <li><button onclick="searchEvents('Meteor Shower')">流星雨预测</button></li>
+            <li><button onclick="searchEvents('Eclipse')">日食预测</button></li>
+            <li><button onclick="searchEvents('New Moon')">新月预测</button></li>
+            <li><button onclick="searchEvents('Full Moon')">满月预测</button></li>
+        </ul>
+    </div>
+
+    <!-- 左侧图片区域 -->
     <div class="image-wrapper">
         <img src="{{ moon_phase_image }}" alt="Moon Phase">
     </div>
+
+    <!-- 导航栏容器 -->
     <div id="navbar-container"></div>
+
+    <!-- 日历容器 -->
     <div id="calendar-container">
         <div id="calendar"></div>
         <div id="event-details">
             <span class="close-btn" onclick="closeEventDetails()">&times;</span>
             <h2>当天天象信息</h2>
             <div id="event-content"></div>
+            <button id="subscribe-button" class="subscribe-button" style="display: none;" onclick="subscribeToEvent()">订阅提醒</button>
         </div>
     </div>
-    <!-- 引入搜索栏 -->
-    {% include 'search_bar.html' %}
 
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <!-- 搜索栏 -->
+    <div id="search-bar">
+        <!-- 这里将通过 AJAX 加载 search_bar.html 的内容 -->
+    </div>
+
+    <!-- 大的搜索结果显示框 -->
+    <div id="search-results-large">
+        <span class="close-btn" onclick="closeSearchResultsLarge()">&times;</span>
+        <div id="search-results-content"></div>
+        <div class="pagination">
+            <button id="prev-page" onclick="prevPage()">上一页</button>
+            <button id="next-page" onclick="nextPage()">下一页</button>
+        </div>
+    </div>
+
     <script>
         const calendar = document.getElementById('calendar');
         const eventContent = document.getElementById('event-content');
         const eventDetails = document.getElementById('event-details');
+        const subscribeButton = document.getElementById('subscribe-button');
         let eventData = {};
+        const searchResultsLarge = document.getElementById('search-results-large');
+        const searchResultsContent = document.getElementById('search-results-content');
+        const prevPageButton = document.getElementById('prev-page');
+        const nextPageButton = document.getElementById('next-page');
+        let currentPage = 1;
+        const itemsPerPage = 5;
+
+        document.querySelectorAll('.subscribe-button').forEach(button => {
+        button.addEventListener('click', function() {
+            const eventId = this.dataset.eventId;
+            const button = this;
+
+            fetch(`/subscribe/${eventId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+           .then(response => response.json())
+           .then(data => {
+                if (data.status === 'success') {
+                    button.textContent = '已订阅';
+                    button.disabled = true;
+                } else {
+                    alert(data.message);
+                }
+            })
+           .catch(error => {
+                console.error('Error:', error);
+                alert('订阅失败，请稍后重试');
+            });
+        });
+    });
 
         // 加载菜单栏
         fetch('{% url 'navbar' %}')
-           .then(response => response.text())
-           .then(data => {
+          .then(response => response.text())
+          .then(data => {
                 const navbarContainer = document.getElementById('navbar-container');
                 navbarContainer.innerHTML = data;
                 const navbar = document.querySelector('.navbar');
@@ -190,7 +130,7 @@
                     });
                 });
             })
-           .catch(error => {
+          .catch(error => {
                 console.error('Error loading navbar:', error);
             });
 
@@ -220,13 +160,13 @@
                 eventData = {};
 
                 fetch(`/get-astronomy-events/?date_start=${startStr}&date_end=${endStr}`)
-                   .then(response => {
+                  .then(response => {
                         if (!response.ok) {
                             throw new Error(`HTTP error! status: ${response.status}`);
                         }
                         return response.json();
                     })
-                   .then(data => {
+                  .then(data => {
                         console.log('Received data:', data);
                         const events = data.events;
 
@@ -245,7 +185,8 @@
                                         dayElement.classList.add('has-event');
                                         eventData[dateKey] = {
                                             summary: event.summary,
-                                            description: event.description
+                                            description: event.description,
+                                            id: event.id // 假设 event 对象中有 id 属性
                                         };
                                     }
                                 });
@@ -254,7 +195,7 @@
                         });
                         console.log('Data processed successfully.');
                     })
-                   .catch(error => {
+                  .catch(error => {
                         console.error('Error fetching events:', error);
                     });
             },
@@ -268,36 +209,65 @@
 
                 if (eventData[dateKey]) {
                     const event = eventData[dateKey];
-                    eventContent.innerHTML = `<p><strong>${dateKey}</strong>: ${event.summary}<br>${event.description}</p>`;
+                    eventContent.innerHTML = `<p><strong>${event.summary}</strong></p><p>${event.description}</p>`;
+                    eventDetails.classList.add('show');
+                    subscribeButton.style.display = 'block';
+                    subscribeButton.dataset.eventId = event.id;
                 } else {
-                    eventContent.innerHTML = '<p>该日期暂无事件信息</p>';
+                    eventContent.innerHTML = '';
+                    eventDetails.classList.remove('show');
+                    subscribeButton.style.display = 'none';
                 }
-                eventDetails.classList.add('show');
             }
         });
 
-        // 处理搜索表单提交事件
-        const searchForm = document.getElementById('search-form');
-        const searchResults = document.getElementById('search-results');
+        // 切换搜索栏显示状态
+        function toggleSearchBar() {
+            searchBar.classList.toggle('expanded');
+            if (searchBar.classList.contains('expanded')) {
+                // 通过 AJAX 加载 search_bar.html 的内容
+                fetch('{% url 'search_bar' %}')
+                  .then(response => response.text())
+                  .then(data => {
+                        searchBar.innerHTML = data;
+                        const searchForm = searchBar.querySelector('#search-form');
+                        searchForm.addEventListener('submit', function (e) {
+                            e.preventDefault();
+                            const eventType = searchBar.querySelector('#event-type').value;
+                            const startDate = searchBar.querySelector('#start-date').value;
+                            const endDate = searchBar.querySelector('#end-date').value;
 
-        searchForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            const eventType = document.getElementById('event-type').value;
-            const startDate = document.getElementById('start-date').value;
-            const endDate = document.getElementById('end-date').value;
+                            let url = '/get-astronomy-events/?';
+                            if (eventType) {
+                                url += `summary=${eventType}&`;
+                            }
+                            if (startDate) {
+                                url += `date_start=${startDate}&`;
+                            }
+                            if (endDate) {
+                                url += `date_end=${endDate}&`;
+                            }
+                            url = url.slice(0, -1); // 移除最后一个 &
 
-            let url = '/get-astronomy-events/?';
-            if (eventType) {
-                url += `summary=${eventType}&`;
+                            searchEvents(url);
+                        });
+                    })
+                  .catch(error => {
+                        console.error('Error loading search bar:', error);
+                    });
             }
-            if (startDate) {
-                url += `date_start=${startDate}&`;
-            }
-            if (endDate) {
-                url += `date_end=${endDate}&`;
-            }
-            url = url.slice(0, -1); // 移除最后一个 &
+        }
 
+        function searchEvents(summary) {
+            console.log('searchEvents function called');
+            const buttons = document.querySelectorAll('#function-selector button');
+            buttons.forEach(button => {
+                button.classList.remove('active');
+            });
+            const clickedButton = event.target;
+            clickedButton.classList.add('active');
+
+            let url = '/get-astronomy-events/?summary=' + summary;
             fetch(url)
               .then(response => {
                     if (!response.ok) {
@@ -307,19 +277,105 @@
                 })
               .then(data => {
                     console.log('Received search results:', data);
+                    // 检查数据是否包含异常信息
                     const events = data.events;
-                    searchResults.innerHTML = '';
-                    events.forEach(event => {
-                        const resultItem = document.createElement('p');
-                        resultItem.innerHTML = `<strong>${event.summary}</strong> (${event.dtstart} - ${event.dtend})<br>${event.description}`;
-                        searchResults.appendChild(resultItem);
-                    });
+                    displayEvents(events);
                 })
               .catch(error => {
                     console.error('Error fetching search results:', error);
-                    searchResults.innerHTML = '<p>搜索出错，请重试。</p>';
+                    searchResultsContent.innerHTML = '<p>搜索出错，请重试。</p>';
+                    searchResultsLarge.classList.add('show');
                 });
-        });
+
+        }
+
+        // 显示事件并分页
+        function displayEvents(events) {
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const currentEvents = events.slice(startIndex, endIndex);
+
+            searchResultsContent.innerHTML = '';
+            currentEvents.forEach(event => {
+                const resultItem = document.createElement('p');
+                resultItem.innerHTML = `<strong>${event.summary}</strong> (${event.dtstart} - ${event.dtend})<br>${event.description}`;
+                searchResultsContent.appendChild(resultItem);
+            });
+
+            // 处理分页按钮状态
+            prevPageButton.disabled = currentPage === 1;
+            nextPageButton.disabled = endIndex >= events.length;
+
+            searchResultsLarge.classList.add('show');
+            console.log('Search results large position:', searchResultsLarge.getBoundingClientRect());
+            console.log('Calendar container position:', document.getElementById('calendar-container').getBoundingClientRect());
+        }
+
+        // 上一页
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                const summary = getActiveSummary();
+                searchEvents(`/get-astronomy-events/?summary=${summary}`);
+            }
+        }
+
+        // 下一页
+        function nextPage() {
+            const summary = getActiveSummary();
+            fetch(`/get-astronomy-events/?summary=${summary}`)
+              .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+              .then(data => {
+                    const events = data.events;
+                    const endIndex = currentPage * itemsPerPage;
+                    if (endIndex < events.length) {
+                        currentPage++;
+                        displayEvents(events);
+                    }
+                })
+              .catch(error => {
+                    console.error('Error fetching next page:', error);
+                });
+        }
+
+        // 获取当前选中的摘要
+        function getActiveSummary() {
+            const activeButton = document.querySelector('#function-selector button.active');
+            if (activeButton) {
+                return activeButton.textContent.trim();
+            }
+            return '';
+        }
+
+        // 关闭事件详情框
+        function closeEventDetails() {
+            eventDetails.classList.remove('show');
+        }
+
+        // 关闭大的搜索结果框
+        function closeSearchResultsLarge() {
+            searchResultsLarge.classList.remove('show');
+        }
+
+        // 订阅事件
+        function subscribeToEvent() {
+            const eventId = subscribeButton.dataset.eventId;
+            fetch(`/subscribe-to-event/${eventId}/`)
+              .then(response => response.json())
+              .then(data => {
+                    if (data.success) {
+                        subscribeButton.textContent = data.subscribed ? '已订阅' : '订阅提醒';
+                    }
+                })
+              .catch(error => {
+                    console.error('Error subscribing to event:', error);
+                });
+        }
     </script>
 </body>
 

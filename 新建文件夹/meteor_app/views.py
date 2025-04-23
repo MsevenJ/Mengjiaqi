@@ -2,21 +2,20 @@ import logging
 from django.templatetags.static import static
 from .moon_phase_image import get_date_image
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.forms import UserCreationForm
+from .forms import CustomUserCreationForm
 from django.shortcuts import render, redirect, get_object_or_404
 from .models import ForumPost, ForumComment, ForumFavorite
 from .forms import ForumPostForm
 from django.http import JsonResponse
 import pandas as pd
-from .models import MeteorShower
+from .models import MeteorShower,CustomUser, Announcement,AstronomyEvent,Planet, AstronomyEventSubscription
 from django.http import HttpResponse
 import re
 from datetime import datetime, date, time
-from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import PasswordChangeForm
-from .models import AstronomyEvent
-
-
+from django.contrib.auth.decorators import user_passes_test
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
 
 logger = logging.getLogger(__name__)
 def login_view(request):
@@ -30,21 +29,25 @@ def login_view(request):
             next_url = request.GET.get('next')
             if next_url:
                 return redirect(next_url)
-            return redirect('meteor_shower_prediction')
+            return redirect('astronomy_calendar')
         else:
-            error_message = "Invalid username or password."
+            error_message = "用户名或密码错误"
             return render(request, 'login.html', {'error_message': error_message})
     return render(request, 'login.html')
 
 
+
 def register_view(request):
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = CustomUserCreationForm(request.POST)
         if form.is_valid():
             form.save()
+            print("表单验证通过，用户已保存")  # 添加调试信息
             return redirect('login')  # 注册成功后重定向到登录页面
+        else:
+            print("表单验证失败:", form.errors)  # 添加调试信息
     else:
-        form = UserCreationForm()
+        form = CustomUserCreationForm()
     return render(request, 'register.html', {'form': form})
 
 def logout_view(request):
@@ -61,6 +64,7 @@ def astronomy_calendar(request):
 
 def navbar(request):
     return render(request, 'navbar.html')
+
 
 def get_astronomy_events(request):
     date_start_str = request.GET.get('date_start')
@@ -260,11 +264,7 @@ def meteor_shower_prediction(request):
         default_shower = None
     return render(request, 'meteor_shower_prediction.html',
                   {'upcoming_showers': upcoming_showers, 'default_shower': default_shower})
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.forms import PasswordChangeForm
-from django.shortcuts import render, redirect
-from django.contrib.auth import logout
-from.models import AstronomyEvent  # 假设存在AstronomyEvent模型来存储天象活动
+
 
 @login_required
 def my_profile(request):
@@ -316,3 +316,63 @@ def view_astronomy_events(request):
 @login_required
 def view_reminders(request):
     return render(request, 'my_profile.html', {'selected_function': 'view_reminders'})
+
+def solar_system_view(request):
+    return render(request, '3D-CSS-Solar-System-master/index.html')
+
+def search_bar(request):
+    return render(request, 'search_bar.html')
+
+
+def is_admin(user):
+    return user.is_admin
+
+@user_passes_test(is_admin)
+def user_management(request):
+    users = CustomUser.objects.all()
+    if request.method == 'POST':
+        user_id = request.POST.get('user_id')
+        action = request.POST.get('action')
+        user = CustomUser.objects.get(id=user_id)
+        if action == 'ban':
+            user.is_banned = True
+            user.save()
+        elif action == 'unban':
+            user.is_banned = False
+            user.save()
+    return render(request, 'user_management.html', {'users': users})
+
+@user_passes_test(is_admin)
+def publish_announcement(request):
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        content = request.POST.get('content')
+        author = request.user
+        Announcement.objects.create(title=title, content=content, author=author)
+        return redirect('announcement_list')
+    return render(request, 'publish_announcement.html')
+
+@user_passes_test(is_admin)
+def announcement_list(request):
+    announcements = Announcement.objects.all()
+    return render(request, 'announcement_list.html', {'announcements': announcements})
+
+def read_announcements(request):
+    announcements = Announcement.objects.all().order_by('-created_at')
+    return render(request, 'read_announcements.html', {'announcements': announcements})
+
+@csrf_exempt
+@login_required
+def subscribe_to_event(request, event_id):
+    try:
+        event = AstronomyEvent.objects.get(id=event_id)
+        subscription, created = AstronomyEventSubscription.objects.get_or_create(
+            user=request.user,
+            event=event
+        )
+        if created:
+            return JsonResponse({'status': 'success', 'message': '订阅成功', 'subscribed': True})
+        else:
+            return JsonResponse({'status': 'error', 'message': '你已经订阅过该事件', 'subscribed': True})
+    except AstronomyEvent.DoesNotExist:
+        return JsonResponse({'status': 'error', 'message': '事件不存在', 'subscribed': False})

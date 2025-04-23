@@ -1,0 +1,264 @@
+/* 全局样式 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    display: flex;
+    min-height: 100vh;
+    margin: 0;
+    background-color: #000;
+    align-items: center;
+    overflow-x: hidden;
+}
+
+/* 左侧图片区域 */
+.image-wrapper {
+    width: 45vw;
+    height: auto;
+    margin-left: 1em;
+    display: flex;
+    align-items: center;
+}
+
+.image-wrapper img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+}
+
+/* 导航栏样式 */
+.navbar {
+    background-color: rgba(0, 0, 0, 0.7);
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    transition: transform 0.3s ease;
+}
+
+.navbar ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+}
+
+.navbar li {
+    margin: 0 1rem;
+}
+
+.navbar a {
+    display: block;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    text-decoration: none;
+    transition: color 0.3s ease;
+    border-radius: 8px;
+}
+
+.navbar a:hover {
+    color: #63b3ed;
+}
+
+.navbar a.active {
+    background-color: white;
+    color: black;
+}
+
+/* 搜索栏样式 */
+#search-bar {
+    display: none;
+    width: 600px;
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(255, 255, 255, 0.4);
+    padding: 16px;
+    border-radius: 8px;
+    z-index: 10;
+}
+
+#search-bar.expanded {
+    display: block;
+}
+
+.search-icon {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    color: white;
+    cursor: pointer;
+    font-size: 24px;
+}
+
+/* 左侧选择栏样式 */
+#function-selector {
+    position: fixed;
+    left: 15px;
+    top: 49px;
+    height: 300px;
+    width: 200px;
+    background-color: rgba(255, 255, 255, 0.4);
+    color: white;
+    padding: 10px;
+    border-radius: 15px;
+}
+
+#function-selector ul {
+    list-style-type: none;
+    padding: 10px;
+}
+
+#function-selector li {
+    margin-bottom: 20px;
+}
+
+#function-selector button {
+    width: 100%;
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: all 0.5s ease;
+}
+
+#function-selector button:hover {
+    background-color: #555;
+}
+
+#function-selector button.active {
+    transform: scale(1.1);
+    background-color: #63b3ed;
+}
+
+/* 日历容器样式 */
+#calendar-container {
+    width: 20vw;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    position: absolute; /* 添加绝对定位 */
+    top: 60px;
+    right: 5em;
+}
+
+#calendar {
+    width: 100%;
+}
+
+#event-details {
+    margin-top: 20px;
+    width: 20vw;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: white;
+    opacity: 0;
+    -webkit-transition: opacity 0.7s ease;
+    -moz-transition: opacity 0.7s ease;
+    -o-transition: opacity 0.7s ease;
+    transition: opacity 0.7s ease;
+    max-height: 300px;
+    overflow-y: auto;
+    position: relative;
+}
+
+#event-details.show {
+    opacity: 1;
+}
+
+#event-details .close-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    cursor: pointer;
+}
+
+.subscribe-button {
+            background-color: #238636;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+.subscribe-button:hover {
+    background-color: #2ea043;
+}
+
+/* 新的结果显示框样式 */
+#search-results-large {
+    display: none;
+    position: absolute;
+    top: 320px;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 850px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    max-height: 600px;
+    overflow-y: auto;
+    position: relative;
+}
+
+
+#search-results-large.show {
+    display: block;
+}
+
+#search-results-large .close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    cursor: pointer;
+    font-size: 24px;
+}
+
+#search-results-large p {
+    margin-bottom: 20px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+}
+
+/* 分页样式 */
+.pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.pagination button {
+    background-color: #333;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    margin: 0 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.pagination button:hover {
+    background-color: #555;
+}
+
+/* 日历事件标记 */
+.flatpickr-day.has-event {
+    background-color: #63b3ed;
+    color: white;
+    border-radius: 50%;
+}

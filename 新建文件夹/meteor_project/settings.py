@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'meteor_app',
     'django.contrib.humanize',
+    'django_crontab',
 ]
 
 MIDDLEWARE = [
@@ -50,6 +51,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'meteor_app.middleware.AdminAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'meteor_project.urls'
@@ -137,3 +139,9 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 USE_TZ = False
+
+AUTH_USER_MODEL = 'meteor_app.CustomUser'
+
+DEFAULT_FROM_EMAIL = 'your_email@example.com'
+
+BASE_URL = 'http://127.0.0.1:8000'

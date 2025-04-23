@@ -1,3 +1,4 @@
+<!-- 新建文件夹/meteor_app/templates/search_bar.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -12,10 +13,27 @@
             padding-bottom: 10px;
             margin-bottom: 10px;
         }
+        #search-bar {
+            width: 40px; /* 初始宽度为放大镜图标大小 */
+            transition: width 0.3s ease;
+            overflow: hidden;
+        }
+        #search-bar.expanded {
+            width: 600px; /* 展开后的宽度 */
+        }
+        .search-icon {
+            position: absolute;
+            top: 50%;
+            left: 10px;
+            transform: translateY(-50%);
+            cursor: pointer;
+            color: white;
+        }
     </style>
 </head>
 <body style="position: relative; width: 100vw;">
     <div id="search-bar" class="absolute top-16 left-80 bg-white bg-opacity-40 p-4 rounded-md shadow-md z-10">
+        <i class="fas fa-search search-icon" onclick="toggleSearchBar()"></i>
         <h2 class="text-xl font-bold text-white mb-4">天文事件检索</h2>
         <form id="search-form" class="flex flex-wrap gap-4 items-end">
             <div class="flex-1">
@@ -40,6 +58,10 @@
         </div>
     </div>
     <script>
+        function toggleSearchBar() {
+            const searchBar = document.getElementById('search-bar');
+            searchBar.classList.toggle('expanded');
+        }
         function closeSearchResults() {
             document.getElementById('search-results').style.display = 'none';
         }

@@ -4,100 +4,95 @@
 <head>
     {% load static %}
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>注册</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
+            font-family: Arial, sans-serif;
             background-image: url('{% static 'login.png' %}');
-            background-size: cover;
-            background-color: #000;
-            font-family: 'Orbitron', sans-serif;
+            background-size: contain;
+            background-color: #f4f4f4;
             display: flex;
             justify-content: center;
             align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-
-        .register-container {
-            background: rgba(0, 0, 0, 0.7);
-            border: 2px solid #ffcc00;
-            border-radius: 20px;
-            box-shadow: 0 0 20px rgba(255, 204, 0, 0.5);
-            padding: 40px;
-            width: 380px;
-            animation: fadeIn 0.5s ease-out;
-            position: relative;
+            height: 100vh;
             overflow: hidden;
         }
 
-        .register-container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: repeating-linear-gradient(
-                45deg,
-                rgba(255, 204, 0, 0.1) 0px,
-                rgba(255, 204, 0, 0.1) 2px,
-                transparent 2px,
-                transparent 4px
-            );
+        .register-container {
+            background-color: #252B34; /* 蓝黑色背景 */
+            border-radius: 8px;
+            padding: 30px;
+            width: 320px;
+            opacity: 0;
+            transform: translateY(-20px);
+            animation: fadeInUp 0.5s ease-out forwards;
+            position: relative;
             z-index: 0;
-            animation: rotate 10s linear infinite;
+            border: 2px solid transparent; /* 初始透明边框 */
+            box-shadow: 0 0 10px rgba(184, 134, 11, 0); /* 初始无阴影 */
+            transition: border-color 0.3s ease, box-shadow 0.3s ease; /* 添加过渡效果 */
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-20px);
-            }
+        .register-container:hover {
+            border-color: #98825f; /* 暗金色边框 */
+            box-shadow: 0 0 20px rgba(184, 134, 11, 0.8); /* 暗金色发光效果 */
+        }
+
+        @keyframes fadeInUp {
             to {
                 opacity: 1;
                 transform: translateY(0);
             }
         }
 
-        @keyframes rotate {
-            from {
-                transform: rotate(0deg);
-            }
-            to {
-                transform: rotate(360deg);
-            }
-        }
-
         h1 {
             text-align: center;
-            margin-bottom: 30px;
-            color: #ffcc00;
-            text-shadow: 0 0 10px rgba(255, 204, 0, 0.5);
-            position: relative;
-            z-index: 1;
+            margin-bottom: 20px;
+            color: #aab6c8; /* 灰蓝色文字 */
+        }
+
+        .error-message {
+            color: red;
+            text-align: center;
+            margin-bottom: 15px;
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% {
+                transform: translateX(0);
+            }
+            25%, 75% {
+                transform: translateX(-5px);
+            }
+            50% {
+                transform: translateX(5px);
+            }
         }
 
         form label {
             display: block;
-            margin-bottom: 8px;
-            color: #ffcc00;
-            font-size: 14px;
-            position: relative;
-            z-index: 1;
+            margin-bottom: 5px;
+            color: #aab6c8; /* 灰蓝色文字 */
         }
 
         form input {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 20px;
-            border: 1px solid #ffcc00;
-            border-radius: 5px;
-            background: rgba(0, 0, 0, 0.3);
-            color: #ffcc00;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #aab6c8;
+            border-radius: 4px;
             outline: none;
             transition: border-color 0.3s ease;
-            position: relative;
-            z-index: 1;
+            background-color: rgba(255, 255, 255, 0.3);
+            color: #aab6c8; /* 灰蓝色文字 */
         }
 
         form input:focus {
@@ -108,14 +103,12 @@
         form button {
             width: 100%;
             padding: 12px;
-            background-color: #ffcc00;
+            background-color: #aab6c8; /* 灰蓝色背景 */
             color: #000;
             border: none;
-            border-radius: 5px;
+            border-radius: 4px;
             cursor: pointer;
             transition: background-color 0.3s ease;
-            position: relative;
-            z-index: 1;
         }
 
         form button:hover {
@@ -124,14 +117,12 @@
 
         p {
             text-align: center;
-            margin-top: 20px;
-            color: #ffcc00;
-            position: relative;
-            z-index: 1;
+            margin-top: 15px;
+            color: #aab6c8; /* 灰蓝色文字 */
         }
 
         p a {
-            color: #ffcc00;
+            color: #aab6c8; /* 灰蓝色文字 */
             text-decoration: none;
         }
 
@@ -139,15 +130,24 @@
             text-decoration: underline;
         }
     </style>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
 </head>
 
 <body>
     <div class="register-container">
         <h1>注册</h1>
+        {% if error_message %}
+        <p class="error-message">{{ error_message }}</p>
+        {% endif %}
         <form method="post">
             {% csrf_token %}
-            {{ form.as_p }}
+            {% for field in form %}
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            <input type="{{ field.field.widget.input_type }}" name="{{ field.name }}" id="{{ field.id_for_label }}"
+                autocomplete="off" value="{{ field.value|default:'' }}" />
+            {% if field.errors %}
+            <div class="error-message">{{ field.errors.0 }}</div>
+            {% endif %}
+            {% endfor %}
             <button type="submit">注册</button>
         </form>
         <p>已有账号? <a href="{% url 'login' %}">登录</a></p>
