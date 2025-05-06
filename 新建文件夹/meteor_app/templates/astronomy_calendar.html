@@ -37,7 +37,7 @@
             <span class="close-btn" onclick="closeEventDetails()">&times;</span>
             <h2>当天天象信息</h2>
             <div id="event-content"></div>
-            <button id="subscribe-button" class="subscribe-button" style="display: none;" onclick="subscribeToEvent()">订阅提醒</button>
+            <button id="subscribe-button" data-event-id="{{ event.id }}" onclick="subscribeToEvent(this)">订阅提醒</button>
         </div>
     </div>
 
@@ -56,33 +56,40 @@
         </div>
     </div>
 
-    <script>
-        const calendar = document.getElementById('calendar');
-        const eventContent = document.getElementById('event-content');
-        const eventDetails = document.getElementById('event-details');
-        const subscribeButton = document.getElementById('subscribe-button');
-        let eventData = {};
-        const searchResultsLarge = document.getElementById('search-results-large');
-        const searchResultsContent = document.getElementById('search-results-content');
-        const prevPageButton = document.getElementById('prev-page');
-        const nextPageButton = document.getElementById('next-page');
-        let currentPage = 1;
-        const itemsPerPage = 5;
+<script>
+    const calendar = document.getElementById('calendar');
+    const eventContent = document.getElementById('event-content');
+    const eventDetails = document.getElementById('event-details');
+    const subscribeButton = document.getElementById('subscribe-button');
+    let eventData = {};
+    const searchResultsLarge = document.getElementById('search-results-large');
+    const searchResultsContent = document.getElementById('search-results-content');
+    const prevPageButton = document.getElementById('prev-page');
+    const nextPageButton = document.getElementById('next-page');
+    let currentPage = 1;
+    const itemsPerPage = 5;
 
-        document.querySelectorAll('.subscribe-button').forEach(button => {
+    document.querySelectorAll('.subscribe-button').forEach(button => {
         button.addEventListener('click', function() {
             const eventId = this.dataset.eventId;
             const button = this;
 
-            fetch(`/subscribe/${eventId}/`, {
+            console.log('尝试订阅事件，事件 ID:', eventId); // 打印事件 ID
+
+            fetch(`/subscribe-to-event/${eventId}/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}'
                 }
             })
-           .then(response => response.json())
+           .then(response => {
+                console.log('响应状态:', response.status); // 打印响应状态
+                console.log('响应头:', response.headers); // 打印响应头
+                return response.json();
+            })
            .then(data => {
+                console.log('响应数据:', data); // 打印响应数据
                 if (data.status === 'success') {
                     button.textContent = '已订阅';
                     button.disabled = true;
@@ -91,10 +98,36 @@
                 }
             })
            .catch(error => {
-                console.error('Error:', error);
+                console.error('错误信息:', error); // 打印错误信息
                 alert('订阅失败，请稍后重试');
             });
         });
+    });
+
+    // 加载菜单栏
+    fetch('{% url 'navbar' %}')
+      .then(response => response.text())
+      .then(data => {
+            const navbarContainer = document.getElementById('navbar-container');
+            navbarContainer.innerHTML = data;
+            const navbar = document.querySelector('.navbar');
+
+            // 导航栏升降动画
+            let prevScrollPos = window.pageYOffset;
+            window.onscroll = function () {
+                const currentScrollPos = window.pageYOffset;
+                if (prevScrollPos > currentScrollPos) {
+                    navbar.classList.remove('hidden');
+                } else {
+                    navbar.classList.add('hidden');
+                }
+                prevScrollPos = currentScrollPos;
+            };
+        })
+      .catch(error => {
+            console.error('Error loading navbar:', error);
+
+
     });
 
         // 加载菜单栏
@@ -363,19 +396,41 @@
         }
 
         // 订阅事件
-        function subscribeToEvent() {
-            const eventId = subscribeButton.dataset.eventId;
-            fetch(`/subscribe-to-event/${eventId}/`)
-              .then(response => response.json())
-              .then(data => {
-                    if (data.success) {
-                        subscribeButton.textContent = data.subscribed ? '已订阅' : '订阅提醒';
-                    }
-                })
-              .catch(error => {
-                    console.error('Error subscribing to event:', error);
-                });
+        function subscribeToEvent(button) {
+        const eventId = button.dataset.eventId;
+        if (eventId) {
+            console.log('尝试订阅事件，事件 ID:', eventId);
+            fetch(`/subscribe-to-event/${eventId}/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                }
+            })
+           .then(response => {
+                if (!response.ok) {
+                    throw new Error(`请求失败，状态码: ${response.status}`);
+                }
+                return response.json();
+            })
+           .then(data => {
+                console.log('响应数据:', data);
+                if (data.status === 'success') {
+                    button.textContent = '已订阅';
+                    button.disabled = true;
+                } else {
+                    alert(data.message);
+                }
+            })
+           .catch(error => {
+                console.error('错误信息:', error);
+                alert(`订阅失败: ${error.message}`);
+            });
+        } else {
+            console.error('事件 ID 未定义');
+            alert('事件 ID 未定义，请刷新页面重试');
         }
+    }
     </script>
 </body>
 

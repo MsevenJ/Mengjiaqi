@@ -1,0 +1,33 @@
+<iframe
+    src="https://stellarium-web.org/"
+    id="stellarium-iframe"
+    class="stellarium-container"
+    allowfullscreen
+></iframe>
+
+<script>
+    document.getElementById('stellarium-iframe').onload = function() {
+        // 等待iframe加载完成后注入CSS
+        const iframe = this;
+        const hideNavCSS = `
+            #header-wrapper,
+            #search-container,
+            .menu-button {
+                display: none !important;
+            }
+            #stellar-main {
+                top: 0 !important;
+            }
+        `;
+
+        const style = document.createElement('style');
+        style.textContent = hideNavCSS;
+
+        // 尝试注入CSS到iframe内部
+        try {
+            iframe.contentDocument.head.appendChild(style);
+        } catch (e) {
+            console.log("跨域限制，需使用代理绕过");
+        }
+    };
+</script>

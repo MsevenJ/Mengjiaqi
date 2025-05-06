@@ -16,6 +16,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+import requests
 
 logger = logging.getLogger(__name__)
 def login_view(request):
@@ -277,7 +278,6 @@ def my_profile(request):
 @login_required
 def update_profile(request):
     if request.method == 'POST':
-        # 这里可以添加更新个人信息的逻辑
         return redirect('my_profile')
     return render(request, 'my_profile.html', {'selected_function': 'update_profile'})
 
@@ -385,3 +385,5 @@ def subscribe_to_event(request, event_id):
     except Exception as e:
         logger.error(f'订阅过程中出现错误: {str(e)}')
         return JsonResponse({'status': 'error', 'message': '订阅过程中出现错误，请稍后重试', 'subscribed': False})
+
+

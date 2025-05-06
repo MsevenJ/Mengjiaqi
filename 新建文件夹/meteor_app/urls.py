@@ -4,6 +4,7 @@ from . import views
 urlpatterns = [
     path('meteor-shower-prediction/', views.meteor_shower_prediction, name='meteor_shower_prediction'),
     path('solar_system/', views.solar_system_view, name='solar_system'),
+    path('stellarium/', views.stellarium_page, name='stellarium-page'),
     path('astronomy-calendar/', views.astronomy_calendar, name='astronomy_calendar'),
     path('subscribe-to-event/<int:event_id>/', views.subscribe_to_event, name='subscribe_to_event'),
     path('search-bar/', views.search_bar, name='search_bar'),

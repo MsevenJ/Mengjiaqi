@@ -16,6 +16,7 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.decorators import user_passes_test
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
+import requests
 
 logger = logging.getLogger(__name__)
 def login_view(request):
@@ -365,14 +366,32 @@ def read_announcements(request):
 @login_required
 def subscribe_to_event(request, event_id):
     try:
+        logger.info(f'收到订阅请求，事件 ID: {event_id}')
         event = AstronomyEvent.objects.get(id=event_id)
         subscription, created = AstronomyEventSubscription.objects.get_or_create(
             user=request.user,
             event=event
         )
         if created:
+            logger.info(f'用户 {request.user.username} 成功订阅事件 {event_id}')
             return JsonResponse({'status': 'success', 'message': '订阅成功', 'subscribed': True})
         else:
-            return JsonResponse({'status': 'error', 'message': '你已经订阅过该事件', 'subscribed': True})
+            subscription.subscribed = not subscription.subscribed
+            subscription.save()
+            logger.info(f'用户 {request.user.username} 更改订阅状态为 {subscription.subscribed} 事件 {event_id}')
+            return JsonResponse({'status': 'success', 'message': '订阅状态已更新', 'subscribed': subscription.subscribed})
     except AstronomyEvent.DoesNotExist:
+        logger.error(f'事件 ID {event_id} 不存在')
         return JsonResponse({'status': 'error', 'message': '事件不存在', 'subscribed': False})
+    except Exception as e:
+        logger.error(f'订阅过程中出现错误: {str(e)}')
+        return JsonResponse({'status': 'error', 'message': '订阅过程中出现错误，请稍后重试', 'subscribed': False})
+
+
+def stellarium_page(request):
+    return render(request, 'stellarium_web/stellarium_page.html')
+
+def stellarium_proxy(request):
+    response = requests.get('https://stellarium-web.org/')
+    html = response.text.replace('</head>', '<style>#header-wrapper { display: none !important; }</style></head>')
+    return HttpResponse(html)

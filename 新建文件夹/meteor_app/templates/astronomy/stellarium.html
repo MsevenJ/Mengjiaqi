@@ -1,0 +1,72 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>星象观测系统</title>
+    <link rel="stylesheet" href="{% static 'stellarium_web/css/stellarium.css' %}">
+    <style>
+        #stellarium-container {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+        }
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel">
+        <input type="text" id="searchInput" placeholder="输入天体名称">
+        <button onclick="searchCelestial()">定位</button>
+    </div>
+    <div id="stellarium-container"></div>
+
+    <script src="{% static 'stellarium_web/js/stellarium.js' %}"></script>
+    <script>
+        let stellarium;
+
+        // 初始化引擎
+        function initEngine() {
+            const container = document.getElementById('stellarium-container');
+
+            stellarium = new StellariumEngine({
+                container: container,
+                config: {
+                    projection: 'stereographic',
+                    landscape: 'moon',
+                    atmosphere: true,
+                    initialDateTime: new Date().toISOString(),
+                    observer: {
+                        longitude: 116.4074,  // 北京经度
+                        latitude: 39.9042,   // 北京纬度
+                        altitude: 50
+                    }
+                }
+            });
+
+            // 加载核心数据
+            stellarium.loadData([
+                '{% static "stellarium_web/data/stars.json" %}',
+                '{% static "stellarium_web/data/planets.json" %}'
+            ]).then(() => {
+                stellarium.startRendering();
+            });
+        }
+
+        // 天体搜索功能
+        function searchCelestial() {
+            const name = document.getElementById('searchInput').value;
+            stellarium.focusOnObject(name);
+        }
+
+        window.addEventListener('load', initEngine);
+    </script>
+</body>
+</html>

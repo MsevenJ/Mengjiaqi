@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stellarium in Django</title>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        .header { padding: 10px; background: #333; color: white; text-align: center; }
+        .stellarium-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+
+    </style>
+</head>
+<body>
+    <iframe
+        src="/stellarium-proxy/"
+        class="stellarium-container"
+        allowfullscreen
+    ></iframe>
+</body>
+</html>
